@@ -31,8 +31,6 @@ object util {
 		val lineCount = lbList.size
 		val longestLine = lbList.zip(lbList.drop(1)).map( {case (a, b) => b - a} ).max
 
-		println(longestLine)
-
 		charsNeeded(math.ceil(math.log10(lineCount)).toInt, math.ceil(math.log10(longestLine)).toInt)
 	}
 
