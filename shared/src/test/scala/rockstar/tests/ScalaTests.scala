@@ -9,6 +9,13 @@ object ScalaTests extends TestSuite {
 			rockstar.parser()
 		}
 
+		'random - {
+			rockstar.parser("Val is 3") match {
+				case Success(value, index) => println(index); assert(true)
+				case Failure(value, index, bt) => println(bt.traced.fullStack); println(index); assert(false)
+			}
+		}
+
 		'unidiomatic - {
 			val input =
 				"""|Modulus takes Number and Divisor

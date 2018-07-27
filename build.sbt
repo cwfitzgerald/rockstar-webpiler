@@ -1,13 +1,15 @@
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 val sharedSettings = Seq(
-	name := "JSFiddle",
+	name := "rockstar",
 	version := "0.1",
 	scalaVersion := "2.12.6",
 	libraryDependencies ++= Seq(
 		"com.lihaoyi" %%% "fastparse" % "1.0.0",
 		"com.lihaoyi" %%% "scalatags" % "0.6.7",
 		"com.lihaoyi" %%% "utest" % "0.6.3" % "test",
+		"io.github.cquiroz" %%% "scala-java-time" % "2.0.0-M13",
+//		"org.typelevel" %%% "cats-core" % "1.2.0"
 //		"org.typelevel" %%% "spire" % "0.16.0"
 	),
 	testFrameworks += new TestFramework("utest.runner.Framework")

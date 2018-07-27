@@ -2,24 +2,70 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>ScalaFiddle</title>
+    <title>Rockstar Webpiler</title>
+
+    <link rel="stylesheet" href="bootstrap.min.css"
+          integrity="sha384-Smlep5jCw/wG7hdkwQ/Z5nLIefveQRIY9nfy6xoR1uRYBtpZgI6339F5dgvm/e9B">
 
     <!-- Include JavaScript dependencies -->
-    <script type="text/javascript" src="./target/scala-2.12/jsfiddle-jsdeps.js"></script>
-
-</head>
-<body>
+    <script type="text/javascript" src="./js/target/scala-2.12/rockstar-jsdeps.js"></script>
     <!-- Include Scala.js compiled code -->
-    <script type="text/javascript" src="./target/scala-2.12/jsfiddle-fastopt.js"></script>
+    <script type="text/javascript" src="./js/target/scala-2.12/rockstar-fastopt.js"></script>
 
-    Add (+), Subtract(-), Multiply(*), Divide(/), or Exponentiate(^) some numbers with parenthesis:
+    <script>
+        function onLoadCompile() {
+            sourceModified($("#input").get(0));
+        }
+    </script>
+</head>
+<body onload="onLoadCompile()">
+<div class="container">
+    <div class="row mt-3 mb-3 text-center">
+        <div class="col-12">
+            <h2>Rockstar Webpiler (WIP)</h2>
+        </div>
+    </div>
+    <div class="row">
+        <!--Input-->
+        <div class="col-6">
+            <ul class="nav">
+                <li class="nav-item">
+                    <div class="nav-link pl-1" >Rockstar:</div>
+                </li>
+            </ul>
 
-    <br>
+            <div class="form-group">
+                <textarea class="form-control text-monospace" style="white-space: nowrap;" rows="12" id="input" onkeyup="sourceModified(this)" onclick="sourceModified(this)"></textarea>
+            </div>
+            <div class="row">
+                <div class="col-6">
+                    Compile Time: <span id="time-to-compile">Null</span>
+                </div>
+                <div class="col-6 text-right" id="position">
+                    0:0
+                </div>
+            </div>
+        </div>
 
-    <input onkeyup="inputCallback(this)" type="text">
+        <!--Output-->
+        <div class="col-6">
+            <ul class="nav nav-tabs">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#">AST</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled" href="#">Decoded RS</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled" href="#">Idiomatic RS</a>
+                </li>
+            </ul>
 
-    <br>
-
-    Answer = <span id="answer">No Input</span>
+            <div class="border-bottom border-left border-right rounded">
+                <div id="output" style="font-family: monospace; overflow-y: auto; overflow-x: auto; max-height: calc((100vh - (16px + 46px + 16px) - 41px * 2) - 4px);" class="p-2 text-nowrap"></div>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
