@@ -33,6 +33,7 @@ lazy val rockstar = crossProject(JSPlatform, JVMPlatform)
 			libraryDependencies ++= Seq(
 				"org.querki" %%% "jquery-facade" % "1.2",
 				"org.scala-js" %%% "scalajs-dom" % "0.9.6",
+				"io.lemonlabs" %%% "scala-uri" % "1.1.4",
 			),
 			jsDependencies += "org.webjars" % "jquery" % "2.2.1" / "jquery.js" minified "jquery.min.js"
 		)

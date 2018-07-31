@@ -1,5 +1,7 @@
 package rockstar
 
+import java.nio.charset.StandardCharsets
+
 import scala.annotation.tailrec
 
 object util {
@@ -16,13 +18,13 @@ object util {
 				retVal
 		}
 
-		lineBreaks(0 +: impl(Vector[Int](), input.toVector, 0) :+ input.length - 1)
+		lineBreaks(0 +: impl(Vector[Int](), input.toVector, 0) :+ input.length + 1)
 	}
 
 	def findLinePair(breaks: lineBreaks, idx: Int): linePair = {
 		val line = breaks.breakIndexes.zipWithIndex.reverse.find({ case (i, _) => i <= idx }).map(_._2).get
 
-		linePair(line, idx - breaks.breakIndexes(line))
+		linePair(line + 1, idx - breaks.breakIndexes(line))
 	}
 
 	def findCharsNeeded(breaks: lineBreaks): charsNeeded = {
@@ -52,5 +54,13 @@ object util {
 				char
 
 		s"$lineString:$charString"
+	}
+
+	def decodeB64(s: String): String = {
+		new String(java.util.Base64.getUrlDecoder.decode(s), StandardCharsets.UTF_8)
+	}
+
+	def encodeB64(s: String): String = {
+		new String(java.util.Base64.getUrlEncoder.encode(s.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8)
 	}
 }

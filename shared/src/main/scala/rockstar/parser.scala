@@ -15,8 +15,8 @@ object parser {
 
 	private def I[T](p: P[T]): all.Parser[(Int, T, Int)] = P( Index ~ p ~ Index )
 
-	private val W = P( (CharsWhileIn(Seq(' ', '\t', ','), 1) | commentStatement).rep )
-	private val MW = P( (CharsWhileIn(Seq(' ', '\t', ','), 1) | commentStatement).rep(1) )
+	private val W = P( (CharsWhileIn(Seq(' ', '\t', ','), 1) | commentStatement).rep )/*.log()*/
+	private val MW = P( (CharsWhileIn(Seq(' ', '\t', ','), 1) | commentStatement).rep(1) )/*.log()*/
 	private val nonCommaWhitespace = P( (CharsWhileIn(Seq(' ', '\t'), 1) | commentStatement).rep )
 	private val newLine = P( "\n" | "\r\n" )/*.log()*/.opaque("Newline")
 	private val lineEnd = P( newLine | End )/*.log()*/.opaque("End of Line")
@@ -27,7 +27,7 @@ object parser {
 
 	private val space = P( CharIn(Seq(' ')) )
 	private val fullLetter = P( capitalLetter | lowerLetter )
-	private val word = P( CharsWhile(c => !c.isWhitespace && (c != '(' || c != '.')) ).opaque("Word")
+	private val word = P( CharsWhile(c => !c.isWhitespace && (c != '(' && c != '.')) )/*.log()*/.opaque("Word")
 
 	private val commonVariableVariableName = P( lowerLetter.rep(1) )/*.log()*/
 	private val commonVariableKeywords = P( StringInIgnoreCase("a", "an", "the", "my", "your") )/*.log()*/
@@ -131,7 +131,7 @@ object parser {
     	.map {
 		    case (eqEnumerator(), None) => eqEnumerator()
 		    case (eqEnumerator(), Some(_)) => neqEnumerator()
-		    case (neqOperator(_), _) => neqEnumerator()
+		    case neqEnumerator() => neqEnumerator()
 	    }
 
 	// boolean operators
@@ -153,7 +153,7 @@ object parser {
 	// Order of Operations //
 	/////////////////////////
 
-	private val functionArgumentDelim = P( StringInIgnoreCase(", ", "and") )
+	private val functionArgumentDelim = P( StringInIgnoreCase(",", "and") )
 	private val functionCall =
 		I(
 			(variable ~ (W ~ CI("taking") ~ W ~/ valueProvider ~ (nonCommaWhitespace ~ functionArgumentDelim ~ W ~/ valueProvider).rep ).? )
@@ -295,12 +295,12 @@ object parser {
     	.opaque("Variable Assignment Operator")
 	private val variablePoeticTypeLiteral = P( tBooleanTrue | tBooleanFalse | tNull | tMysterious )/*.log()*/
     	.opaque("Poetic Type Literal")
-	private val variablePoeticNumberLiteral = I( (word.! ~ W).rep(1) ~/ ("." ~ W ~ word.!).rep ~ &(lineEnd) )/*.log()*/
+	private val variablePoeticNumberLiteral = I( (word.! ~ W).rep(1) ~/ ("." ~ (W ~ word.!).rep).? ~ &(lineEnd) )/*.log()*/
     	.opaque("Poetic Number Literal")
     	.map {
 			case (si, (wordLeftSeq, wordRightSeq), ei) =>
 				ast.NumberC(
-					BigDecimal(resolvePoeticLiteral(wordLeftSeq) + "." + resolvePoeticLiteral(wordRightSeq)),
+					BigDecimal(resolvePoeticLiteral(wordLeftSeq) + "." + resolvePoeticLiteral(wordRightSeq.getOrElse(Seq("abcdefghij")))),
 					srcPos(si, ei)
 				)
 		}
@@ -314,7 +314,7 @@ object parser {
 		}
 	private val variableStrLiteralAssignment =
 		I(
-			variable ~ W ~ CI("says") ~ W ~/ I((!newLine ~ AnyChar).!)
+			variable ~ W ~ CI("says") ~ W ~/ I((!newLine ~ AnyChar).rep.!)
 		) /*.log()*/
 		.map {
 			case (si, (vari, (strSI, value, strEI)), ei) =>
@@ -327,7 +327,7 @@ object parser {
 	private val elseConditionExpression = P( CI("else") ~/ W ) /*.log()*/
 	private val whileConditionExpression = P( CI("while") ~ W ~/ mathExpr )/*.log()*/
 	private val untilConditionExpression = P( CI("until") ~ W ~/ mathExpr )/*.log()*/
-	private val functionSignatureExpression = P( variable ~ W ~ CI("takes") ~ W ~/ variable ~ (W ~ CI("and") ~ W ~/ variable).rep )/*.log()*/
+	private val functionSignatureExpression = P( variable ~ W ~ CI("takes") ~ W ~/ variable ~ (W ~ CI("and")/*.log()*/ ~ W ~ variable).rep )/*.log()*/
     	.map {
 			case (funcVar, arg1, argN) => (funcVar, arg1 +: argN)
 		}
@@ -344,12 +344,12 @@ object parser {
 		.map {
 			case (si, (_, statements), ei) =>
 				ast.StatementList(statements.map(_.srcPos).foldLeft(srcPos(ei, ei))(_.expand(_)), statements.toVector)
-		}
+		}/*.log()*/
 
 	private val ifStatement =
 		I(
 			ifConditionExpression ~ W ~ newLine ~
-				(!(W ~ lineEnd) ~ expression ).rep() ~ elseStatement.?
+				(!(W ~ lineEnd) ~ expression ).rep() ~ (W ~ elseStatement).?
 		)/*.log()*/
     	.map {
 			case (si, (condition, statements, elseBlock), ei) =>
@@ -384,7 +384,7 @@ object parser {
 				ast.FunctionStatement(funcVar, argVars.toVector, statementList, srcPos(si, ei))
 		}
 
-	private lazy val commentStatement = P( "(" ~/ (!")" ~ AnyChar).rep ~/ ")" )
+	private lazy val commentStatement = P( "(" ~ (!")" ~ AnyChar).rep ~ ")" )/*.log()*/
 
 	// All statements that start with a terminal must come first, as things like
 	// "While Number is as high as Divisor" can start to be parsed as an assignment to
@@ -404,6 +404,7 @@ object parser {
 				continueStatement |
 				breakStatement |
 				variableAssignmentStatement |
+				functionCall |
 				I("").map{ case (si, _, ei) => ast.None(srcPos(si, ei))}
 		) ~ W ~ lineEnd
 	)/*.log()*/

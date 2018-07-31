@@ -1,9 +1,10 @@
 import fastparse.core.Parsed.{Failure, Success}
 import org.querki.jquery._
-import org.scalajs.dom.html.Element
 import org.scalajs.dom.{html => htmlDom}
+import org.scalajs.dom
 import rockstar.ast
 import rockstar.util
+import io.lemonlabs.uri._
 import scalatags.JsDom.all._
 
 import scala.scalajs.js.annotation._
@@ -29,7 +30,7 @@ object RockstarWebpilerHooks {
 
 	case class positionFormatting(breaks: util.lineBreaks, cn: util.charsNeeded)
 
-	def walkAst(curNode: ast.Node, breaks: util.lineBreaks, cn: util.charsNeeded, indent: Int = 0): Seq[Element] = {
+	def walkAst(curNode: ast.Node, breaks: util.lineBreaks, cn: util.charsNeeded, indent: Int = 0): Seq[dom.Element] = {
 		val pos = curNode.srcPos
 
 		implicit val pnl: positionFormatting = positionFormatting(breaks, cn)
@@ -121,10 +122,33 @@ object RockstarWebpilerHooks {
 		}
 	}
 
+	@JSExportTopLevel("init")
+	def init(): Unit = {
+		// jquery selectors
+		val input = $("#input").get(0).get.asInstanceOf[htmlDom.TextArea]
+		val output = $("#output").get(0).get
+
+		println("init")
+
+		// process page args
+		val parsedUrl = AbsoluteUrl.parse(dom.window.location.href)
+
+		parsedUrl.query.paramMap.get("src").foreach {
+			case Vector(b64Input) => {
+				input.value = util.decodeB64(b64Input)
+			}
+		}
+
+		input.onkeyup = { e: dom.KeyboardEvent => sourceModified(input) }
+		input.onclick = { e: dom.MouseEvent => sourceModified(input) }
+
+		sourceModified(input)
+	}
+
 	private var lastCompile = new String
 
-	@JSExportTopLevel("sourceModified")
 	def sourceModified(element: htmlDom.TextArea): Unit = {
+		println("sm")
 		val currentText = element.value
 
 		val lineMap = util.createLineBreaks(currentText)
@@ -145,6 +169,11 @@ object RockstarWebpilerHooks {
 			$("#output").append(res)
 
 			$("#time-to-compile").text(s"${time}ms")
+
+			val uriStr = dom.window.location.href
+			val uri = AbsoluteUrl.parse(uriStr)
+
+			dom.window.history.replaceState("", "Test Title", uri.withQueryStringOptionValues(("src", Some(util.encodeB64(currentText)))).toString())
 
 			lastCompile = currentText
 		}
