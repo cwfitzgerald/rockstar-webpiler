@@ -8,6 +8,7 @@ import io.lemonlabs.uri._
 import scalatags.JsDom.all._
 
 import scala.scalajs.js.annotation._
+import scala.util.Try
 
 object RockstarWebpilerHooks {
 	case class compileError(expected: String, idx: Int)
@@ -17,14 +18,15 @@ object RockstarWebpilerHooks {
 		println("compiling...")
 
 		val startTime = java.time.Instant.now()
-		val parsed = rockstar.parser(input)
+		val parsed = Try{ rockstar.parser(input) }.toEither
 		val endTime = java.time.Instant.now()
 
 		val totalTime = endTime.toEpochMilli - startTime.toEpochMilli
 
 		parsed match {
-			case Success(ast, _) => compileResult(None, Some(ast), totalTime)
-			case Failure(ast, idx, traceback) => compileResult(Some(compileError(ast.toString, idx)), None, totalTime)
+			case Right(Success(ast, _)) => compileResult(None, Some(ast), totalTime)
+			case Right(Failure(ast, idx, traceback)) => compileResult(Some(compileError(s"Expecting: ${ast.toString}", idx)), None, totalTime)
+			case Left(exception) => compileResult(Some(compileError(s"Exception: ${exception.toString}", 0)), None, totalTime)
 		}
 	}
 
@@ -159,9 +161,9 @@ object RockstarWebpilerHooks {
 		if (currentText != lastCompile) {
 			val (res, time) = compile(currentText) match {
 				case compileResult(None, Some(program), compTime) => (walkAst(program, lineMap, charsNeeded), compTime)
-				case compileResult(Some(compileError(expected, index)), None, compTime) => {
+				case compileResult(Some(compileError(message, index)), None, compTime) => {
 					val errorLoc = util.findLinePair(lineMap, index)
-					(Seq(p(s"Error. Expecting: $expected at pos ${errorLoc.line}:${errorLoc.char}").render), compTime)
+					(Seq(p(s"Error. $message at pos ${errorLoc.line}:${errorLoc.char}").render), compTime)
 				}
 			}
 

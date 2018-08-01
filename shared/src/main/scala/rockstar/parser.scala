@@ -56,8 +56,8 @@ object parser {
 	private val tBooleanFalse = I( StringInIgnoreCase("false", "wrong", "no", "lines") )/*.log()*/
 		.map { case (si, _, ei) => ast.BooleanC(value = false, srcPos(si, ei)) }
 
-	private val tNumber = I( number.rep(1).! ~ ("." ~ number.rep).!.? )/*.log()*/
-		.map { case (si, (front, back), ei) => ast.NumberC(BigDecimal(front + "." + back.getOrElse("0")), srcPos(si, ei)) }
+	private val tNumber = I( ("-".?.! ~ W ~ number.rep(1).!) ~ ("." ~ number.rep).!.? )/*.log()*/
+		.map { case (si, (sign, front, back), ei) => ast.NumberC(BigDecimal(sign + front + "." + back.getOrElse("0")), srcPos(si, ei)) }
 
 	private val tString = I( "\"" ~/ (!CharIn(Seq('\"', '\n')) ~/ AnyChar).rep.! ~ "\"" )/*.log()*/
     	.opaque("String")
