@@ -4,13 +4,19 @@
     <meta charset="UTF-8">
     <title>Rockstar Webpiler</title>
 
-    <link rel="stylesheet" href="bootstrap.min.css"
+    <link rel="stylesheet" href="{{ url_for("static", filename="bootstrap.min.css") }}"
           integrity="sha384-Smlep5jCw/wG7hdkwQ/Z5nLIefveQRIY9nfy6xoR1uRYBtpZgI6339F5dgvm/e9B">
 
     <!-- Include JavaScript dependencies -->
-    <script type="text/javascript" src="./js/target/scala-2.12/rockstar-jsdeps.js"></script>
+    {% if debug %}
+        <script type="text/javascript" src="{{ url_for("static_js", jspath="rockstar-jsdeps.js") }}"></script>
+    {% endif %}
     <!-- Include Scala.js compiled code -->
-    <script type="text/javascript" src="./js/target/scala-2.12/rockstar-fastopt.js"></script>
+    {% if debug %}
+        <script type="text/javascript" src="{{ url_for("static_js", jspath="rockstar-fastopt.js") }}"></script>
+    {% else %}
+        <script type="text/javascript" src="{{ url_for("static_js", jspath="rockstar.js") }}"></script>
+    {% endif %}
 </head>
 <body onload="init()">
 <div class="container">
@@ -29,7 +35,7 @@
             </ul>
 
             <div class="form-group">
-                <textarea class="form-control text-monospace"  wrap="off" rows="12" id="input"></textarea>
+                <textarea class="form-control text-monospace"  wrap="off" rows="12" id="input">{{ input }}</textarea>
             </div>
             <div class="row">
                 <div class="col-6">

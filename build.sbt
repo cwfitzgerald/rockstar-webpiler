@@ -35,7 +35,10 @@ lazy val rockstar = crossProject(JSPlatform, JVMPlatform)
 				"org.scala-js" %%% "scalajs-dom" % "0.9.6",
 				"io.lemonlabs" %%% "scala-uri" % "1.1.4",
 			),
-			jsDependencies += "org.webjars" % "jquery" % "2.2.1" / "jquery.js" minified "jquery.min.js"
+			jsDependencies ++= Seq(
+				"org.webjars" % "jquery" % "3.3.1" / "jquery.js" minified "jquery.min.js",
+				"org.webjars" % "bootstrap" % "4.1.2" / "js/bootstrap.bundle.js" minified "js/bootstrap.bundle.min.js"
+			)
 		)
 	)
     .jvmSettings(
