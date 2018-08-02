@@ -56,11 +56,11 @@ object util {
 		s"$lineString:$charString"
 	}
 
-	def decodeB64(s: String): String = {
-		new String(java.util.Base64.getUrlDecoder.decode(s), StandardCharsets.UTF_8)
-	}
-
-	def encodeB64(s: String): String = {
-		new String(java.util.Base64.getUrlEncoder.encode(s.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8)
-	}
+//	def decodeB64(s: String): String = {
+//		new String(java.util.Base64.getUrlDecoder.decode(s), StandardCharsets.UTF_8)
+//	}
+//
+//	def encodeB64(s: String): String = {
+//		new String(java.util.Base64.getUrlEncoder.encode(s.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8)
+//	}
 }

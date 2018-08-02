@@ -1,5 +1,9 @@
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
+scalacOptions ++= Seq(
+	"-feature"
+)
+
 val sharedSettings = Seq(
 	name := "rockstar",
 	version := "0.1",
@@ -34,6 +38,8 @@ lazy val rockstar = crossProject(JSPlatform, JVMPlatform)
 				"org.querki" %%% "jquery-facade" % "1.2",
 				"org.scala-js" %%% "scalajs-dom" % "0.9.6",
 				"io.lemonlabs" %%% "scala-uri" % "1.1.4",
+				"com.lihaoyi" %%% "ujson" % "0.6.6"
+
 			),
 			jsDependencies ++= Seq(
 				"org.webjars" % "jquery" % "3.3.1" / "jquery.js" minified "jquery.min.js",
