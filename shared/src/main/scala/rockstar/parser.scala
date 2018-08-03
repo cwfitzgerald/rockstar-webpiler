@@ -37,7 +37,7 @@ object parser {
 	private val properVariableName = I( (capitalLetter ~ fullLetter.rep ~ (space ~ capitalLetter ~ fullLetter.rep).rep).! )/*.log()*/
     	.map {case (si, n, ei) => ast.ProperVariable(n, srcPos(si, ei)) }
 
-	private val pronoun = P( Index ~ StringInIgnoreCase("it", "he", "she", "him", "her", "them", "they").! ~ Index )/*.log()*/
+	private val pronoun = P( Index ~ StringInIgnoreCase("it", "he", "she", "him", "her", "they", "them", "ze", "hir", "zie", "zir", "xe", "xem", "ve", "ver").! ~ Index )/*.log()*/
     	.map {case (si, n, ei) => ast.Pronoun(n, srcPos(si, ei)) }
 
 	private val variable: all.Parser[ast.Variable] = P( commonVariable | pronoun | properVariableName )/*.log()*/
