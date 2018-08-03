@@ -19,6 +19,35 @@
     {% endif %}
 </head>
 <body onload="init()">
+
+<!-- Short Link Model -->
+<div class="modal" id="shortLinkModel" tabindex="-1" role="dialog" aria-labelledby="shortLinkModelTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="shortLinkModelTitle">Modal title</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group row m-1">
+                        <label for="shortLinkValue" class="col-2 col-form-label">Link:</label>
+
+                        <div class="col-10">
+                            <input type="text" readonly class="form-control" id="shortLinkValue" value="Loading..."/>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="container">
     <div class="row mt-3 mb-3 text-center">
         <div class="col-12">
@@ -30,12 +59,12 @@
         <div class="col-6">
             <ul class="nav">
                 <li class="nav-item">
-                    <div class="nav-link pl-1" >Rockstar:</div>
+                    <div class="nav-link pl-1">Rockstar:</div>
                 </li>
             </ul>
 
             <div class="form-group">
-                <textarea class="form-control text-monospace"  wrap="off" rows="12" id="input">{{ input }}</textarea>
+                <textarea class="form-control text-monospace" wrap="off" rows="12" id="input">{{ input }}</textarea>
             </div>
             <div class="row">
                 <div class="col-6">
@@ -43,6 +72,14 @@
                 </div>
                 <div class="col-6 text-right" id="position">
                     0:0
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <!-- Trigger Shortlink Modal -->
+                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#shortLinkModel">
+                        Get Sharing Link
+                    </button>
                 </div>
             </div>
         </div>
@@ -62,7 +99,9 @@
             </ul>
 
             <div class="border-bottom border-left border-right rounded">
-                <div id="output" style="font-family: monospace; overflow-y: auto; overflow-x: auto; max-height: calc((100vh - (16px + 46px + 16px) - 41px * 2) - 4px);" class="p-2"></div>
+                <div id="output"
+                     style="font-family: monospace; overflow-y: auto; overflow-x: auto; max-height: calc((100vh - (16px + 46px + 16px) - 41px * 2) - 4px);"
+                     class="p-2"></div>
             </div>
         </div>
     </div>

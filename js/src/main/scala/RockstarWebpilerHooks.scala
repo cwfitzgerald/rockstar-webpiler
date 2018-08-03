@@ -133,6 +133,14 @@ object RockstarWebpilerHooks {
 		}
 	}
 
+	def applyShortlink(shortlink: String): Unit = {
+		val origin = dom.window.location.origin.get
+
+		val shortlinkUrl = (origin :+ '/') ++ shortlink
+		$("#shortLinkValue").value(shortlinkUrl)
+		dom.window.history.replaceState("", dom.document.title, shortlinkUrl)
+	}
+
 	def getShortlink(content: String): Future[String] = {
 		val fdDyn = js.Dynamic.newInstance(js.Dynamic.global.FormData)()
 
@@ -144,7 +152,7 @@ object RockstarWebpilerHooks {
 
 		val future = Ajax.post( "/api/gen_shortlink", Ajax.InputData.formdata2ajax(fd))
 
-		future.map{ xhr => ujson.read(xhr.responseText)("link").str }
+		future.map{ xhr => ujson.read(xhr.responseText)("link").str }.map(s => {println(s); s} )
 	}
 
 	@JSExportTopLevel("init")
@@ -158,6 +166,12 @@ object RockstarWebpilerHooks {
 		input.onkeyup = { e: dom.KeyboardEvent => sourceModified(input) }
 		input.onclick = { e: dom.MouseEvent => sourceModified(input) }
 
+		def modelCallback(j: JQueryEventObject, a: Any): Any = {
+			getShortlink(input.value).map(applyShortlink)
+		}
+
+		$("#shortLinkModel").on("shown.bs.modal", modelCallback _)
+
 		sourceModified(input)
 	}
 
@@ -167,7 +181,7 @@ object RockstarWebpilerHooks {
 		println("sm")
 		val currentText = element.value
 
-		getShortlink(currentText).foreach(x => println(x))
+//		getShortlink(currentText).foreach(x => println(x))
 
 		val lineMap = util.createLineBreaks(currentText)
 		val charsNeeded = util.findCharsNeeded(lineMap)
