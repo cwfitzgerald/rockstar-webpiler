@@ -5,10 +5,12 @@ from sshtunnel import SSHTunnelForwarder
 import os
 import psycopg2
 import psycopg2.extensions
+import hashlib
 import socket
 import secrets
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024
 
 app.jinja_env.globals.update(debug=app.debug)
 
@@ -73,15 +75,40 @@ def static_js(jspath):
     return send_from_directory("../js/target/scala-2.12/", jspath)
 
 
+@app.route('/api/test/rehash_all')
+def rehash_all():
+    with connection:
+        with connection.cursor() as c: # type: psycopg2._ext.cursor
+            with connection.cursor() as wc:  # type: psycopg2._ext.cursor
+                c.execute('SELECT shortlink, fulltext FROM shortlinks')
+
+                for row in c:
+                    hasher = hashlib.sha512()
+                    hasher.update(row[1].encode('utf8', errors='replace'))
+                    hash = hasher.digest()
+
+                    wc.execute('UPDATE shortlinks SET fulltext_hash = %s WHERE shortlink = %s', (hash, row[0]))
+
+            return "", 204
+
+
+
 @app.route('/api/gen_shortlink', methods=['POST'])
 def gen_shortlink():
+    if 'file' not in request.files:
+        return jsonify({"error": "no file uploaded"}), 400
     file = request.files['file'] # type: werkzeug.datastructures.FileStorage
 
     with connection:
         with connection.cursor() as c: # type: psycopg2._ext.cursor
-            file_text = file.stream.read().decode('utf8')
+            raw_file_text = file.stream.read()
+            file_text = raw_file_text.decode('utf8', errors='replace').replace('\0', '')
 
-            c.execute('SELECT shortlink FROM shortlinks WHERE fulltext = %s', (file_text,))
+            hasher = hashlib.sha512()
+            hasher.update(raw_file_text)
+            hash = hasher.digest()
+
+            c.execute('SELECT shortlink FROM shortlinks WHERE fulltext_hash = %s', (hash,))
 
             if c.rowcount != 0:
                 return jsonify({"link": c.fetchone()[0]})
@@ -90,7 +117,7 @@ def gen_shortlink():
                 id = secrets.token_urlsafe(8)
 
                 try:
-                    c.execute('INSERT INTO shortlinks (shortlink, fulltext) VALUES (%s, %s)', (id, file_text))
+                    c.execute('INSERT INTO shortlinks (shortlink, fulltext, fulltext_hash) VALUES (%s, %s, %s)', (id, file_text, hash))
                 except psycopg2.IntegrityError:
                     continue
 
