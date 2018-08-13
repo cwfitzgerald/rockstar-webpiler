@@ -31,7 +31,7 @@ object parser {
 
 	private val commonVariableVariableName = P( lowerLetter.rep(1) )/*.log()*/
 	private val commonVariableKeywords = P( StringInIgnoreCase("a", "an", "the", "my", "your") )/*.log()*/
-	private val commonVariable = I( commonVariableKeywords.! ~ MW ~ commonVariableVariableName.! )/*.log*/
+	private val commonVariable = I( commonVariableKeywords.! ~ MW ~ commonVariableVariableName.! )/*.log()*/
     	.map {case (si, (k, n), ei) => ast.CommonVariable(k, n, srcPos(si, ei)) }
 
 	private val properVariableName = I( (capitalLetter ~ fullLetter.rep ~ (space ~ capitalLetter ~ fullLetter.rep).rep).! )/*.log()*/
@@ -40,7 +40,7 @@ object parser {
 	private val pronoun = P( Index ~ StringInIgnoreCase("it", "he", "she", "him", "her", "they", "them", "ze", "hir", "zie", "zir", "xe", "xem", "ve", "ver").! ~ Index )/*.log()*/
     	.map {case (si, n, ei) => ast.Pronoun(n, srcPos(si, ei)) }
 
-	private val variable: all.Parser[ast.Variable] = P( commonVariable | pronoun | properVariableName )/*.log()*/
+	private val variable: all.Parser[ast.Variable] = P( commonVariable | properVariableName | pronoun )/*.log()*/
     	.opaque("Variable")
 
 	// all the literals in the language
