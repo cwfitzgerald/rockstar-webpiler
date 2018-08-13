@@ -1,23 +1,17 @@
 import fastparse.core.Parsed.{Failure, Success}
-
-import scala.util.Try
-import scala.concurrent.duration._
-import scala.concurrent.Future
-
 import org.querki.jquery._
-
-import scalajs.js
 import org.scalajs.dom
 import org.scalajs.dom.ext.Ajax
-import org.scalajs.dom.ext.Ajax.InputData
 import org.scalajs.dom.{html => htmlDom}
 import rockstar.{ast, util}
 import scalatags.JsDom.all._
 
-import scala.scalajs.js
-import scala.scalajs.js.annotation._
-import scala.scalajs.js.JSConverters._
+import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.js
+import scala.scalajs.js.JSConverters._
+import scala.scalajs.js.annotation._
+import scala.util.Try
 
 object RockstarWebpilerHooks {
 	case class compileError(expected: String, idx: Int)
@@ -41,16 +35,16 @@ object RockstarWebpilerHooks {
 
 	case class positionFormatting(breaks: util.lineBreaks, cn: util.charsNeeded)
 
-	def walkAst(curNode: ast.Node, breaks: util.lineBreaks, cn: util.charsNeeded, indent: Int = 0): Seq[dom.Element] = {
+	def printAST(curNode: ast.Node, breaks: util.lineBreaks, cn: util.charsNeeded, indent: Int = 0): Seq[dom.Element] = {
 		val pos = curNode.srcPos
 
 		implicit val pnl: positionFormatting = positionFormatting(breaks, cn)
 
-		walkAstImpl(curNode, indent)
+		walkASTImpl(curNode, indent)
 	}
 
 	// I'm not too proud of that implicit there, but ¯\_(ツ)_/¯
-	def walkAstImpl(curNode: ast.Node, indent: Int)(implicit pnl: positionFormatting) : Seq[htmlDom.Element] = {
+	def walkASTImpl(curNode: ast.Node, indent: Int)(implicit pnl: positionFormatting) : Seq[htmlDom.Element] = {
 		val pos = curNode.srcPos
 
 		val posStartString = util.formatAsString(pnl.breaks, pnl.cn, pos.start)
@@ -80,56 +74,56 @@ object RockstarWebpilerHooks {
 			case n: ast.FunctionCall =>
 				printer(s"Function Call: ") ++
 					printer("Name", indent + 1) ++
-					walkAstImpl(n.function, indent + 2) ++
+					walkASTImpl(n.function, indent + 2) ++
 					printer("Args", indent + 1) ++
-					n.args.flatMap(x => walkAstImpl(x, indent + 2))
+					n.args.flatMap(x => walkASTImpl(x, indent + 2))
 			case _: ast.Break => printer("Break")
 			case _: ast.Continue => printer("Continue")
-			case n: ast.Return => printer("Return") ++ walkAstImpl(n.value, indent + 1)
-			case n: ast.Addition => printer("Addition") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.Subtraction => printer("Subtraction") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.Multiplication => printer("Multiplication") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.Division => printer("Division") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.Greater => printer("Greater") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.Less => printer("Less") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.GreaterEq => printer("Greater or Equal") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.LessEq => printer("Lesser or Equal") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.Eq => printer("Equal") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.Neq => printer("Not Equal") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.And => printer("And") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.Or => printer("Or") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.Nor => printer("Nor") ++ walkAstImpl(n.left, indent + 1) ++ walkAstImpl(n.right, indent + 1)
-			case n: ast.Increment => printer("Increment") ++ walkAstImpl(n.value, indent + 1)
-			case n: ast.Decrement => printer("Decrement") ++ walkAstImpl(n.value, indent + 1)
-			case n: ast.Print => printer("Print") ++ walkAstImpl(n.value, indent + 1)
-			case n: ast.GetLine => printer("GetLine") ++ walkAstImpl(n.variable, indent + 1)
-			case n: ast.Set => printer("Set") ++ walkAstImpl(n.variable, indent + 1) ++ walkAstImpl(n.value, indent + 1)
-			case n: ast.StatementList => printer("Statement List") ++ n.statements.flatMap(x => walkAstImpl(x, indent + 1))
+			case n: ast.Return => printer("Return") ++ walkASTImpl(n.value, indent + 1)
+			case n: ast.Addition => printer("Addition") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.Subtraction => printer("Subtraction") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.Multiplication => printer("Multiplication") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.Division => printer("Division") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.Greater => printer("Greater") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.Less => printer("Less") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.GreaterEq => printer("Greater or Equal") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.LessEq => printer("Lesser or Equal") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.Eq => printer("Equal") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.Neq => printer("Not Equal") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.And => printer("And") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.Or => printer("Or") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.Nor => printer("Nor") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
+			case n: ast.Increment => printer("Increment") ++ walkASTImpl(n.value, indent + 1)
+			case n: ast.Decrement => printer("Decrement") ++ walkASTImpl(n.value, indent + 1)
+			case n: ast.Print => printer("Print") ++ walkASTImpl(n.value, indent + 1)
+			case n: ast.GetLine => printer("GetLine") ++ walkASTImpl(n.variable, indent + 1)
+			case n: ast.Set => printer("Set") ++ walkASTImpl(n.variable, indent + 1) ++ walkASTImpl(n.value, indent + 1)
+			case n: ast.StatementList => printer("Statement List") ++ n.statements.flatMap(x => walkASTImpl(x, indent + 1))
 			case n: ast.IfStatement =>
 				printer("If") ++
 					printer("Conditon", indent + 1) ++
-					walkAstImpl(n.condition, indent + 2) ++
-					walkAstImpl(n.statements, indent + 1) ++
+					walkASTImpl(n.condition, indent + 2) ++
+					walkASTImpl(n.statements, indent + 1) ++
 					printer("Else") ++
-					walkAstImpl(n.elseStatements, indent + 1)
+					walkASTImpl(n.elseStatements, indent + 1)
 			case n: ast.WhileStatement =>
 				printer("While") ++
 					printer("Conditon", indent + 1) ++
-					walkAstImpl(n.condition, indent + 2) ++
-					walkAstImpl(n.statements, indent + 1)
+					walkASTImpl(n.condition, indent + 2) ++
+					walkASTImpl(n.statements, indent + 1)
 			case n: ast.UntilStatement =>
 				printer("Until") ++
 					printer("Conditon", indent + 1) ++
-					walkAstImpl(n.condition, indent + 2) ++
-					walkAstImpl(n.statements, indent + 1)
+					walkASTImpl(n.condition, indent + 2) ++
+					walkASTImpl(n.statements, indent + 1)
 			case n: ast.FunctionStatement =>
 				printer("Function") ++
 					printer("Name:", indent + 1) ++
-					walkAstImpl(n.name, indent + 2) ++
+					walkASTImpl(n.name, indent + 2) ++
 					printer("Variables", indent + 1) ++
-					n.variables.flatMap(x => walkAstImpl(x, indent + 2)) ++
-					walkAstImpl(n.statements, indent + 1)
-			case n: ast.Program => printer("Program") ++ walkAstImpl(n.statements, indent + 1)
+					n.variables.flatMap(x => walkASTImpl(x, indent + 2)) ++
+					walkASTImpl(n.statements, indent + 1)
+			case n: ast.Program => printer("Program") ++ walkASTImpl(n.statements, indent + 1)
 		}
 	}
 
@@ -190,7 +184,7 @@ object RockstarWebpilerHooks {
 
 		if (currentText != lastCompile) {
 			val (res, time) = compile(currentText) match {
-				case compileResult(None, Some(program), compTime) => (walkAst(program, lineMap, charsNeeded), compTime)
+				case compileResult(None, Some(program), compTime) => (printAST(program, lineMap, charsNeeded), compTime)
 				case compileResult(Some(compileError(message, index)), None, compTime) => {
 					val errorLoc = util.findLinePair(lineMap, index)
 					(Seq(p(s"Error. $message at pos ${errorLoc.line}:${errorLoc.char}").render), compTime)
