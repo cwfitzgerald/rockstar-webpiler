@@ -86,7 +86,7 @@ object ScalaTests extends TestSuite {
 			}
 		}
 
-		'algorihtm - {
+		'algorithm - {
 			val input = """
 			  |
 			  |my heart is inadequate
@@ -99,7 +99,7 @@ object ScalaTests extends TestSuite {
 			  |Liftin High takes the spirit and Greatness
 			  |Davy is without
 			  |Gina is outdazzling
-			  |While Davy ain't greatness
+			  |While Davy ain't Greatness
 			  |Put the spirit of Gina into Gina
 			  |Build Davy up
 			  |

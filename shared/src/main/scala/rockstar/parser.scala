@@ -127,7 +127,7 @@ object parser {
 	private val diffEqOperator = P( CI("is") ~ W ~ CI("as") ~ W ~/ (greaterThanEqOperator | lessThanEqOperator) ~ W ~/ CI("as") )
 	private val diffOperator = P( diffEqOperator | diffNeqOperator )/*.log()*/
 
-	private val compEqOperator = P( (eqOperator ~ negationOperator.!.?) | neqOperator )
+	private val compEqOperator = P( (eqOperator ~ (W ~ negationOperator.! ~ &(MW)).?) | neqOperator )
     	.map {
 		    case (eqEnumerator(), None) => eqEnumerator()
 		    case (eqEnumerator(), Some(_)) => neqEnumerator()
