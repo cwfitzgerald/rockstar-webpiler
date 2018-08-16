@@ -32,7 +32,7 @@ object parser {
 	private val commonVariableVariableName = P( lowerLetter.rep(1) )/*.log()*/
 	private val commonVariableKeywords = P( StringInIgnoreCase("a", "an", "the", "my", "your") )/*.log()*/
 	private val commonVariable = I( commonVariableKeywords.! ~ MW ~ commonVariableVariableName.! )/*.log()*/
-    	.map {case (si, (k, n), ei) => ast.CommonVariable(k, n, srcPos(si, ei)) }
+    	.map {case (si, (k, n), ei) => ast.CommonVariable(s"${k}_$n", srcPos(si, ei)) }
 
 	private val properVariableName = I( (capitalLetter ~ fullLetter.rep ~ (space ~ capitalLetter ~ fullLetter.rep).rep).! )/*.log()*/
     	.map {case (si, n, ei) => ast.ProperVariable(n, srcPos(si, ei)) }
@@ -45,23 +45,23 @@ object parser {
 
 	// all the literals in the language
 	private val tMysterious = I( CI("mysterious") )/*.log()*/
-		.map { case (si, _, ei) => ast.Mysterious(srcPos(si, ei)) }
+		.map { case (si, _, ei) => ast.MysteriousConstant(srcPos(si, ei)) }
 
 	private val tNull = I( StringInIgnoreCase("null", "nothing", "nowhere", "nobody", "gone", "empty" ) )/*.log()*/
-    	.map { case (si, _, ei) => ast.Null(srcPos(si, ei)) }
+    	.map { case (si, _, ei) => ast.NullConstant(srcPos(si, ei)) }
 
 	private val tBooleanTrue = I( StringInIgnoreCase("true", "right", "yes", "ok") )/*.log()*/
-    	.map { case (si, _, ei) => ast.BooleanC(value = true, srcPos(si, ei)) }
+    	.map { case (si, _, ei) => ast.BooleanConstant(value = true, srcPos(si, ei)) }
 
 	private val tBooleanFalse = I( StringInIgnoreCase("false", "wrong", "no", "lines") )/*.log()*/
-		.map { case (si, _, ei) => ast.BooleanC(value = false, srcPos(si, ei)) }
+		.map { case (si, _, ei) => ast.BooleanConstant(value = false, srcPos(si, ei)) }
 
 	private val tNumber = I( ("-".?.! ~ W ~ number.rep(1).!) ~ ("." ~ number.rep).!.? )/*.log()*/
-		.map { case (si, (sign, front, back), ei) => ast.NumberC(BigDecimal(sign + front + back.getOrElse(".0")), srcPos(si, ei)) }
+		.map { case (si, (sign, front, back), ei) => ast.NumberConstant(BigDecimal(sign + front + back.getOrElse(".0")), srcPos(si, ei)) }
 
 	private val tString = I( "\"" ~/ (!CharIn(Seq('\"', '\n')) ~/ AnyChar).rep.! ~ "\"" )/*.log()*/
     	.opaque("String")
-    	.map { case (si, v, ei) => ast.StringC(v, srcPos(si, ei)) }
+    	.map { case (si, v, ei) => ast.StringConstant(v, srcPos(si, ei)) }
 
 	private val tLiteral: all.Parser[ast.Constant] =
 		P( tMysterious | tNull | tBooleanTrue | tBooleanFalse | tNumber | tString )/*.log()*/
@@ -147,7 +147,7 @@ object parser {
 	    }
 
 	// represents anything that can give you a value
-	private val valueProvider: all.Parser[ast.Value] = P( tLiteral | variable )/*.log()*/
+	private val valueProvider: all.Parser[ast.Subexprable] = P( tLiteral | variable )/*.log()*/.opaque("Value provider")
 
 	/////////////////////////
 	// Order of Operations //
@@ -170,8 +170,21 @@ object parser {
 			}
 		}
 
+	private val topLevelFunctionCall =
+		I(
+			variable ~ W ~ CI("taking") ~ W ~/ valueProvider ~ (nonCommaWhitespace ~ functionArgumentDelim ~ W ~/ valueProvider).rep
+		)/*.log()*/
+			.map{
+				case (si, v, ei) => v match {
+					case (funcName: ast.Variable, firstArg: ast.Value, nArgs: Object) =>
+						val nArgsCast = nArgs.asInstanceOf[Seq[ast.Subexprable]]
+
+						ast.FunctionCall(funcName, (firstArg +: nArgsCast).toVector, srcPos(si, ei))
+			}
+		}
+
 	@tailrec
-	private def mulDivOperationGen(lhs: ast.Node, rhs: List[(mulDivEnumeratorClass, ast.Node)]): ast.Node = rhs match {
+	private def mulDivOperationGen(lhs: ast.Subexprable, rhs: List[(mulDivEnumeratorClass, ast.Subexprable)]): ast.Subexprable = rhs match {
 		case Nil => lhs
 		case (mulEnumerator(), node) :: rest =>
 			mulDivOperationGen(ast.Multiplication(lhs, node, lhs.srcPos.expand(node.srcPos)), rest)
@@ -188,7 +201,7 @@ object parser {
 		}
 
 	@tailrec
-	private def plusMinusOperationGen(lhs: ast.Node, rhs: List[(plusMinusEnumeratorClass, ast.Node)]): ast.Node = rhs match {
+	private def plusMinusOperationGen(lhs: ast.Subexprable, rhs: List[(plusMinusEnumeratorClass, ast.Subexprable)]): ast.Subexprable = rhs match {
 		case Nil => lhs
 		case (plusEnumerator(), node) :: rest =>
 			plusMinusOperationGen(ast.Addition(lhs, node, lhs.srcPos.expand(node.srcPos)), rest)
@@ -205,7 +218,7 @@ object parser {
 		}
 
 	@tailrec
-	private def diffComparisonOperationGen(lhs: ast.Node, rhs: List[(DiffEnumerator, ast.Node)]): ast.Node = rhs match {
+	private def diffComparisonOperationGen(lhs: ast.Subexprable, rhs: List[(DiffEnumerator, ast.Subexprable)]): ast.Subexprable = rhs match {
 		case Nil => lhs
 		case (gtEnumerator(), node) :: rest =>
 			diffComparisonOperationGen(ast.Greater(lhs, node, lhs.srcPos.expand(node.srcPos)), rest)
@@ -226,7 +239,7 @@ object parser {
 		}
 
 	@tailrec
-	private def compEqComparisonOperationGen(lhs: ast.Node, rhs: List[(compEqEnumerator, ast.Node)]): ast.Node = rhs match {
+	private def compEqComparisonOperationGen(lhs: ast.Subexprable, rhs: List[(compEqEnumerator, ast.Subexprable)]): ast.Subexprable = rhs match {
 		case Nil => lhs
 		case (eqEnumerator(), node) :: rest =>
 			compEqComparisonOperationGen(ast.Eq(lhs, node, lhs.srcPos.expand(node.srcPos)), rest)
@@ -243,7 +256,7 @@ object parser {
 		}
 
 	@tailrec
-	private def boolOperationGen(lhs: ast.Node, rhs: List[(BooleanEnumerator, ast.Node)]): ast.Node = rhs match {
+	private def boolOperationGen(lhs: ast.Subexprable, rhs: List[(BooleanEnumerator, ast.Subexprable)]): ast.Subexprable = rhs match {
 		case Nil => lhs
 		case (andEnumerator(), node) :: rest =>
 			boolOperationGen(ast.And(lhs, node, lhs.srcPos.expand(node.srcPos)), rest)
@@ -299,7 +312,7 @@ object parser {
     	.opaque("Poetic Number Literal")
     	.map {
 			case (si, (wordLeftSeq, wordRightSeq), ei) =>
-				ast.NumberC(
+				ast.NumberConstant(
 					BigDecimal(resolvePoeticLiteral(wordLeftSeq) + "." + resolvePoeticLiteral(wordRightSeq.getOrElse(Seq("abcdefghij")))),
 					srcPos(si, ei)
 				)
@@ -318,7 +331,7 @@ object parser {
 		) /*.log()*/
 		.map {
 			case (si, (vari, (strSI, value, strEI)), ei) =>
-				ast.Set(ast.StringC(value, srcPos(strSI, strEI)), vari, srcPos(si, ei))
+				ast.Set(ast.StringConstant(value, srcPos(strSI, strEI)), vari, srcPos(si, ei))
 		}
 
 	private val variableAssignmentStatement = P( variableTypeAssignment | variableStrLiteralAssignment )/*.log()*/
@@ -333,7 +346,7 @@ object parser {
 		}
 
 
-	private def blockGenerator[T](parser: P[T]): P[(Int, (T, Seq[ast.Node]), Int)] = {
+	private def blockGenerator[T](parser: P[T]): P[(Int, (T, Seq[ast.TopLevel]), Int)] = {
 		I(
 			parser ~ W ~ newLine ~
 				(!(W ~ lineEnd) ~/ expression).rep()
@@ -389,7 +402,7 @@ object parser {
 	// All statements that start with a terminal must come first, as things like
 	// "While Number is as high as Divisor" can start to be parsed as an assignment to
 	// "While Number" causing hell to be raised
-	private lazy val expression: P[ast.Node] = P(
+	private lazy val expression: P[ast.TopLevel] = P(
 		W ~ (
 			putStatement |
 				listenStatement |
@@ -404,7 +417,7 @@ object parser {
 				continueStatement |
 				breakStatement |
 				variableAssignmentStatement |
-				functionCall |
+				topLevelFunctionCall |
 				I("").map{ case (si, _, ei) => ast.None(srcPos(si, ei))}
 		) ~ W ~ lineEnd
 	)/*.log()*/

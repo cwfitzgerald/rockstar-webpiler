@@ -1,13 +1,14 @@
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
-scalacOptions ++= Seq(
-	"-feature"
-)
-
 val sharedSettings = Seq(
 	name := "rockstar",
 	version := "0.1",
 	scalaVersion := "2.12.6",
+	scalacOptions ++= Seq(
+		"-feature",
+		"-deprecation",
+		"-unchecked"
+	),
 	libraryDependencies ++= Seq(
 		"com.lihaoyi" %%% "fastparse" % "1.0.0",
 		"com.lihaoyi" %%% "scalatags" % "0.6.7",

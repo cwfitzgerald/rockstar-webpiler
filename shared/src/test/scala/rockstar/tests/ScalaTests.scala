@@ -193,5 +193,17 @@ object ScalaTests extends TestSuite {
 				case Failure(value, index, bt) => println(input.length); println(bt.traced.fullStack); println(index); assert(false)
 			}
 		}
+
+		'IRtests - {
+			val input =
+				"""Put "x" into my x
+				  |Shout my x with my x
+				  |Build my x up
+				  |Build my x up""".stripMargin
+
+			val parsed = rockstar.parser(input).get.value
+
+			val FromAst = rockstar.ir.FromAst(parsed)
+		}
 	}
 }

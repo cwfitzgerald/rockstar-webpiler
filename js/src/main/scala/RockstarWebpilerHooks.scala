@@ -2,8 +2,11 @@ import fastparse.core.Parsed.{Failure, Success}
 import org.querki.jquery._
 import org.scalajs.dom
 import org.scalajs.dom.ext.Ajax
+import org.scalajs.dom.html.Div
 import org.scalajs.dom.{html => htmlDom}
-import rockstar.{ast, util}
+import rockstar.ast
+import rockstar.util
+import rockstar.ir
 import scalatags.JsDom.all._
 
 import scala.concurrent.Future
@@ -14,118 +17,48 @@ import scala.scalajs.js.annotation._
 import scala.util.Try
 
 object RockstarWebpilerHooks {
-	case class compileError(expected: String, idx: Int)
-	case class compileResult(error: Option[compileError], output: Option[ast.Program], time: Long)
+	// Internal Methods
 
-	def compile(input: String): compileResult = {
+	object CurrentStatus extends Enumeration {
+		type CurrentStatus = Value
+		val AST, IR = Value
+	}
+
+	case class CompileError(expected: String, idx: Int)
+	case class CompileResult(result: Either[CompileError, (ast.Program, ir.Program)], time: Long)
+
+	def compile(input: String): CompileResult = {
 		println("compiling...")
 
 		val startTime = java.time.Instant.now()
-		val parsed = Try{ rockstar.parser(input) }.toEither
+		val parsed = Try {
+			rockstar.parser(input)
+		}.toEither
 		val endTime = java.time.Instant.now()
 
 		val totalTime = endTime.toEpochMilli - startTime.toEpochMilli
 
-		parsed match {
-			case Right(Success(ast, _)) => compileResult(None, Some(ast), totalTime)
-			case Right(Failure(ast, idx, traceback)) => compileResult(Some(compileError(s"Expecting: ${ast.toString}", idx)), None, totalTime)
-			case Left(exception) => compileResult(Some(compileError(s"Exception: ${exception.toString}", 0)), None, totalTime)
-		}
-	}
-
-	case class positionFormatting(breaks: util.lineBreaks, cn: util.charsNeeded)
-
-	def printAST(curNode: ast.Node, breaks: util.lineBreaks, cn: util.charsNeeded, indent: Int = 0): Seq[dom.Element] = {
-		val pos = curNode.srcPos
-
-		implicit val pnl: positionFormatting = positionFormatting(breaks, cn)
-
-		walkASTImpl(curNode, indent)
-	}
-
-	// I'm not too proud of that implicit there, but ¯\_(ツ)_/¯
-	def walkASTImpl(curNode: ast.Node, indent: Int)(implicit pnl: positionFormatting) : Seq[htmlDom.Element] = {
-		val pos = curNode.srcPos
-
-		val posStartString = util.formatAsString(pnl.breaks, pnl.cn, pos.start)
-		val posEndString = util.formatAsString(pnl.breaks, pnl.cn, pos.end)
-
-		def printer(value: String, indent: Int = indent) = {
-			Seq(
-				div(
-					s"$posStartString-$posEndString",
-					(1 to indent).map(_ => raw("&nbsp;|")),
-					" ",
-					value
-				).render
-			)
+		val compileResult = parsed match {
+			case Right(Success(ast, _)) => Right(ast)
+			case Right(Failure(ast, idx, traceback)) => Left(CompileError(s"Expecting: ${ast.toString}", idx))
+			case Left(exception) => Left(CompileError(s"Exception: ${exception.toString}", 0))
 		}
 
-		curNode match {
-			case _: ast.None => printer("None")
-			case n: ast.CommonVariable => printer(s"Variable: '${n.prefix}:${n.name}'")
-			case n: ast.ProperVariable => printer(s"Variable: '${n.name}'")
-			case n: ast.Pronoun => printer(s"Pronoun: '${n.name}'")
-			case _: ast.Mysterious => printer("Mysterious")
-			case _: ast.Null => printer("Null")
-			case n: ast.BooleanC => printer(s"Constant: ${n.value}")
-			case n: ast.NumberC => printer(s"Constant: ${n.value}")
-			case n: ast.StringC => printer(s"Constant: \'${n.value}\'")
-			case n: ast.FunctionCall =>
-				printer(s"Function Call: ") ++
-					printer("Name", indent + 1) ++
-					walkASTImpl(n.function, indent + 2) ++
-					printer("Args", indent + 1) ++
-					n.args.flatMap(x => walkASTImpl(x, indent + 2))
-			case _: ast.Break => printer("Break")
-			case _: ast.Continue => printer("Continue")
-			case n: ast.Return => printer("Return") ++ walkASTImpl(n.value, indent + 1)
-			case n: ast.Addition => printer("Addition") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.Subtraction => printer("Subtraction") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.Multiplication => printer("Multiplication") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.Division => printer("Division") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.Greater => printer("Greater") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.Less => printer("Less") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.GreaterEq => printer("Greater or Equal") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.LessEq => printer("Lesser or Equal") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.Eq => printer("Equal") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.Neq => printer("Not Equal") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.And => printer("And") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.Or => printer("Or") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.Nor => printer("Nor") ++ walkASTImpl(n.left, indent + 1) ++ walkASTImpl(n.right, indent + 1)
-			case n: ast.Increment => printer("Increment") ++ walkASTImpl(n.value, indent + 1)
-			case n: ast.Decrement => printer("Decrement") ++ walkASTImpl(n.value, indent + 1)
-			case n: ast.Print => printer("Print") ++ walkASTImpl(n.value, indent + 1)
-			case n: ast.GetLine => printer("GetLine") ++ walkASTImpl(n.variable, indent + 1)
-			case n: ast.Set => printer("Set") ++ walkASTImpl(n.variable, indent + 1) ++ walkASTImpl(n.value, indent + 1)
-			case n: ast.StatementList => printer("Statement List") ++ n.statements.flatMap(x => walkASTImpl(x, indent + 1))
-			case n: ast.IfStatement =>
-				printer("If") ++
-					printer("Conditon", indent + 1) ++
-					walkASTImpl(n.condition, indent + 2) ++
-					walkASTImpl(n.statements, indent + 1) ++
-					printer("Else") ++
-					walkASTImpl(n.elseStatements, indent + 1)
-			case n: ast.WhileStatement =>
-				printer("While") ++
-					printer("Conditon", indent + 1) ++
-					walkASTImpl(n.condition, indent + 2) ++
-					walkASTImpl(n.statements, indent + 1)
-			case n: ast.UntilStatement =>
-				printer("Until") ++
-					printer("Conditon", indent + 1) ++
-					walkASTImpl(n.condition, indent + 2) ++
-					walkASTImpl(n.statements, indent + 1)
-			case n: ast.FunctionStatement =>
-				printer("Function") ++
-					printer("Name:", indent + 1) ++
-					walkASTImpl(n.name, indent + 2) ++
-					printer("Variables", indent + 1) ++
-					n.variables.flatMap(x => walkASTImpl(x, indent + 2)) ++
-					walkASTImpl(n.statements, indent + 1)
-			case n: ast.Program => printer("Program") ++ walkASTImpl(n.statements, indent + 1)
-		}
+		val irResult = compileResult.flatMap (prog => {
+			val IRd = Try {
+				ir.FromAst(prog)
+			}.toEither
+
+			IRd match {
+				case Right(ir) => Right((prog, ir))
+				case Left(exception) => Left(CompileError(s"Exception in IR generation: ${exception.toString}", 0))
+			}
+		})
+
+		CompileResult(irResult, totalTime)
 	}
+
+	// Callbacks for user functionality
 
 	def applyShortlink(shortlink: String): Unit = {
 		val origin = dom.window.location.origin.get
@@ -144,16 +77,30 @@ object RockstarWebpilerHooks {
 
 		val fd = fdDyn.asInstanceOf[dom.FormData]
 
-		val future = Ajax.post( "/api/gen_shortlink", Ajax.InputData.formdata2ajax(fd))
+		val future = Ajax.post("/api/gen_shortlink", Ajax.InputData.formdata2ajax(fd))
 
-		future.map{ xhr => ujson.read(xhr.responseText)("link").str }.map(s => {println(s); s} )
+		future.map { xhr => ujson.read(xhr.responseText)("link").str }.map(s => {
+			println(s); s
+		})
+	}
+
+	def printAST(program: ast.Program, breaks: util.lineBreaks, needed: util.charsNeeded): Seq[Div] = {
+		val stringSeq = ast.PrettyPrinter(program, breaks, needed)
+
+		stringSeq.map(s => div(s, br()).render)
+	}
+
+	def setActive(value: CurrentStatus.Value): Unit = {
+		currentStatus = value
+		updateDisplay()
 	}
 
 	@JSExportTopLevel("init")
 	def init(): Unit = {
 		// jquery selectors
 		val input = $("#input").get(0).get.asInstanceOf[htmlDom.TextArea]
-		val output = $("#output").get(0).get
+		val ASTButton = $("#astbutton").get(0).get.asInstanceOf[htmlDom.Anchor]
+		val IRButton = $("#irbutton").get(0).get.asInstanceOf[htmlDom.Anchor]
 
 		println("init")
 
@@ -166,37 +113,72 @@ object RockstarWebpilerHooks {
 
 		$("#shortLinkModel").on("shown.bs.modal", modelCallback _)
 
+		ASTButton.onclick = { e: dom.MouseEvent => setActive(CurrentStatus.AST) }
+		IRButton.onclick = { e: dom.MouseEvent => setActive(CurrentStatus.IR) }
+
 		sourceModified(input)
 	}
 
-	private var lastCompile = new String
+	private var currentStatus = CurrentStatus.AST
+	private var lastInput = new String
+	private var lastLineMap: util.lineBreaks = _
+	private var lastCharsNeeded: util.charsNeeded = _
+	private var lastError: Option[String] = None
+	private var lastAst: Option[ast.Program] = None
+	private var lastIR: Option[ir.Program] = None
+
+	def updateDisplay(): Unit = {
+		val output = $("#output")
+
+		output.empty()
+		if (lastError.isDefined) {
+			output.append(lastError.get)
+		}
+		else {
+			output.append(currentStatus match {
+				case CurrentStatus.AST => printAST(lastAst.get, lastLineMap, lastCharsNeeded)
+				case CurrentStatus.IR => Seq(div().render)
+			})
+		}
+	}
 
 	def sourceModified(element: htmlDom.TextArea): Unit = {
 		println("sm")
 		val currentText = element.value
 
-//		getShortlink(currentText).foreach(x => println(x))
+		lastLineMap = util.createLineBreaks(currentText)
+		lastCharsNeeded = util.findCharsNeeded(lastLineMap)
 
-		val lineMap = util.createLineBreaks(currentText)
-		val charsNeeded = util.findCharsNeeded(lineMap)
+		$("#position").text(s"${util.formatAsString(lastLineMap, lastCharsNeeded, element.selectionStart)}")
 
-		$("#position").text(s"${util.formatAsString(lineMap, charsNeeded, element.selectionStart)}")
+		if (currentText != lastInput) {
+			lastAst = None
+			lastIR = None
+			lastError = None
 
-		if (currentText != lastCompile) {
-			val (res, time) = compile(currentText) match {
-				case compileResult(None, Some(program), compTime) => (printAST(program, lineMap, charsNeeded), compTime)
-				case compileResult(Some(compileError(message, index)), None, compTime) => {
-					val errorLoc = util.findLinePair(lineMap, index)
-					(Seq(p(s"Error. $message at pos ${errorLoc.line}:${errorLoc.char}").render), compTime)
+			val time = compile(currentText) match {
+				case CompileResult(Right((program, ir)), compTime) =>
+					lastAst = Some(program)
+					lastIR = Some(ir)
+
+					compTime
+
+				case CompileResult(Left(CompileError(message, index)), compTime) => {
+					val errorLoc = util.findLinePair(lastLineMap, index)
+
+					lastError = Some(s"Error. $message at pos ${errorLoc.line}:${errorLoc.char}")
+					lastAst = None
+					lastIR = None
+
+					compTime
 				}
 			}
 
-			$("#output").empty()
-			$("#output").append(res)
-
 			$("#time-to-compile").text(s"${time}ms")
-
-			lastCompile = currentText
 		}
+
+		updateDisplay()
+
+		lastInput = currentText
 	}
 }
