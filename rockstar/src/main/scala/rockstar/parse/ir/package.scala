@@ -1,4 +1,4 @@
-package rockstar
+package rockstar.parse
 
 import scala.collection.mutable
 

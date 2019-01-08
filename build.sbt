@@ -1,38 +1,46 @@
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
-val sharedSettings = Seq(
-	name := "rockstar",
+val commonSettings = Seq(
 	version := "0.1",
 	scalaVersion := "2.12.6",
 	scalacOptions ++= Seq(
 		"-feature",
 		"-deprecation",
 		"-unchecked"
-	),
-	libraryDependencies ++= Seq(
-		"com.lihaoyi" %%% "fastparse" % "1.0.0",
-		"com.lihaoyi" %%% "scalatags" % "0.6.7",
-		"com.lihaoyi" %%% "utest" % "0.6.3" % "test",
-		"io.github.cquiroz" %%% "scala-java-time" % "2.0.0-M13",
-//		"org.typelevel" %%% "cats-core" % "1.2.0"
-//		"org.typelevel" %%% "spire" % "0.16.0"
-	),
-	testFrameworks += new TestFramework("utest.runner.Framework")
+	)
 )
 
-lazy val root = project.in(file("."))
-	.aggregate(rockstarJVM, rockstarJS)
-	.settings(
-		publish := {},
-		publishLocal := {}
-	)
-
-enablePlugins(ScalaJSPlugin)
-
 lazy val rockstar = crossProject(JSPlatform, JVMPlatform)
+    .crossType(CrossType.Pure)
+	.in(file("rockstar"))
+	.settings(commonSettings ++ Seq(
+		name := "rockstar",
+		libraryDependencies ++= Seq(
+			"com.lihaoyi" %%% "fastparse" % "2.1.0",
+			"com.lihaoyi" %%% "scalatags" % "0.6.7",
+			"com.lihaoyi" %%% "utest" % "0.6.3" % "test",
+			"io.github.cquiroz" %%% "scala-java-time" % "2.0.0-M13",
+		),
+		testFrameworks += new TestFramework("utest.runner.Framework")
+	))
+    .jsSettings(Seq(
+	    test := {}
+    ))
+
+lazy val rockstarJS = rockstar.js
+lazy val rockstarJVM = rockstar.jvm
+
+lazy val frontend = crossProject(JSPlatform, JVMPlatform)
     .crossType(CrossType.Full)
-	.in(file("."))
-	.settings(sharedSettings)
+    .in(file("frontend"))
+	.settings(commonSettings ++ Seq(
+		name := "frontend",
+		test := {},
+		libraryDependencies ++= Seq(
+			"com.lihaoyi" %%% "scalatags" % "0.6.7",
+			"io.github.cquiroz" %%% "scala-java-time" % "2.0.0-M13",
+		)
+	))
 	.jsSettings(
 		Seq(
 			libraryDependencies ++= Seq(
@@ -48,10 +56,26 @@ lazy val rockstar = crossProject(JSPlatform, JVMPlatform)
 			)
 		)
 	)
-    .jvmSettings(
-	    aggregate in fastOptJS := false,
-	    aggregate in fullOptJS := false,
-    )
+    .dependsOn(rockstar)
 
-lazy val rockstarJVM = rockstar.jvm
-lazy val rockstarJS = rockstar.js
+lazy val frontendJS: Project = frontend.js
+lazy val frontendJVM: Project = frontend.jvm
+
+def combineFiles(inFiles: File*)(outfile: File): Unit = {
+	IO.write(outfile, inFiles.map(IO.read(_)).reduce(_ + _))
+	println(s"Copying ${inFiles.length} files into ${outfile.getCanonicalPath}")
+}
+
+frontendJS / Compile / fastOptJS := {
+	val result = (frontendJS / Compile / fastOptJS).value
+	val base = frontendJS.base / "target" / "scala-2.12"
+	combineFiles(base / "rockstar-frontend-jsdeps.js", base / "rockstar-frontend-fastopt.js")(baseDirectory.value / "bundle" / "static" / "js" / "rs.js")
+	result
+}
+
+frontendJS / Compile / fullOptJS := {
+	val result = (frontendJS / Compile / fullOptJS).value
+	val base = frontendJS.base / "target" / "scala-2.12"
+	combineFiles(base / "rockstar-frontend-jsdeps.js", base / "rockstar-frontend-fullopt.js")(baseDirectory.value / "bundle" / "static" / "js" / "rs.js")
+	result
+}

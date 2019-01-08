@@ -1,4 +1,4 @@
-package rockstar
+package rockstar.parse
 
 package object ast {
 	case class SourcePosition(start: Int, end: Int) {

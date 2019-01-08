@@ -1,18 +1,15 @@
-package rockstar.tests
+package rockstar.parse.tests
 
-import fastparse.core.Parsed.{Failure, Success}
+import fastparse.Parsed.{Failure, Success}
+import rockstar.parse
 import utest._
 
 object ScalaTests extends TestSuite {
 	val tests = Tests {
-		'construct - {
-			rockstar.parser()
-		}
-
 		'random - {
-			rockstar.parser("Val is 3") match {
+			parse.parser("Val is 3") match {
 				case Success(value, index) => println(index); assert(true)
-				case Failure(value, index, bt) => println(bt.traced.fullStack); println(index); assert(false)
+				case Failure(value, index, bt) => println(bt.trace()); println(index); assert(false)
 			}
 		}
 
@@ -45,9 +42,9 @@ object ScalaTests extends TestSuite {
 				   |Say Counter
 				   |    (EOL ending Until block)
 				""".stripMargin
-			rockstar.parser(input) match {
+			parse.parser(input) match {
 				case Success(value, index) => println(input.length); println(index); assert(true)
-				case Failure(value, index, bt) => println(input.length); println(bt.traced.fullStack); println(index); assert(false)
+				case Failure(value, index, bt) => println(input.length); println(bt.trace()); println(index); assert(false)
 			}
 		}
 
@@ -80,9 +77,9 @@ object ScalaTests extends TestSuite {
 				   |
 				   |Whisper my world
 				""".stripMargin
-			rockstar.parser(input) match {
+			parse.parser(input) match {
 				case Success(value, index) => println(input.length); println(index); assert(true)
-				case Failure(value, index, bt) => println(input.length); println(bt.traced.fullStack); println(index); assert(false)
+				case Failure(value, index, bt) => println(input.length); println(bt.trace()); println(index); assert(false)
 			}
 		}
 
@@ -188,9 +185,9 @@ object ScalaTests extends TestSuite {
 			  |Rock Remembrance taking Scottie, Life
 			""".stripMargin
 
-			rockstar.parser(input) match {
+			parse.parser(input) match {
 				case Success(value, index) => println(input.length); println(index); assert(true)
-				case Failure(value, index, bt) => println(input.length); println(bt.traced.fullStack); println(index); assert(false)
+				case Failure(value, index, bt) => println(input.length); println(bt.trace()); println(index); assert(false)
 			}
 		}
 
@@ -201,9 +198,9 @@ object ScalaTests extends TestSuite {
 				  |Build my x up
 				  |Build my x up""".stripMargin
 
-			val parsed = rockstar.parser(input).get.value
+			val parsed = parse.parser(input).get.value
 
-			val FromAst = rockstar.ir.FromAst(parsed)
+			val FromAst = parse.ir.FromAst(parsed)
 		}
 	}
 }

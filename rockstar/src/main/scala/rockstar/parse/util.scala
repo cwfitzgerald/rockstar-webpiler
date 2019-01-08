@@ -1,4 +1,4 @@
-package rockstar
+package rockstar.parse
 
 import java.nio.charset.StandardCharsets
 

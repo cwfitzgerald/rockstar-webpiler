@@ -1,12 +1,13 @@
-import fastparse.core.Parsed.{Failure, Success}
+import fastparse.Parsed.{Failure, Success}
 import org.querki.jquery._
 import org.scalajs.dom
 import org.scalajs.dom.ext.Ajax
 import org.scalajs.dom.html.Div
 import org.scalajs.dom.{html => htmlDom}
-import rockstar.ast
-import rockstar.util
-import rockstar.ir
+import rockstar.parse
+import rockstar.parse.ast
+import rockstar.parse.util
+import rockstar.parse.ir
 import scalatags.JsDom.all._
 
 import scala.concurrent.Future
@@ -25,14 +26,14 @@ object RockstarWebpilerHooks {
 	}
 
 	case class CompileError(expected: String, idx: Int)
-	case class CompileResult(result: Either[CompileError, (ast.Program, ir.Program)], time: Long)
+	case class CompileResult(result: Either[CompileError, ast.Program], time: Long)
 
 	def compile(input: String): CompileResult = {
 		println("compiling...")
 
 		val startTime = java.time.Instant.now()
 		val parsed = Try {
-			rockstar.parser(input)
+			parse.parser(input)
 		}.toEither
 		val endTime = java.time.Instant.now()
 
@@ -40,22 +41,22 @@ object RockstarWebpilerHooks {
 
 		val compileResult = parsed match {
 			case Right(Success(ast, _)) => Right(ast)
-			case Right(Failure(ast, idx, traceback)) => Left(CompileError(s"Expecting: ${ast.toString}", idx))
+			case Right(Failure(ast, idx, _)) => Left(CompileError(s"Expecting: ${ast.toString}", idx))
 			case Left(exception) => Left(CompileError(s"Exception: ${exception.toString}", 0))
 		}
 
-		val irResult = compileResult.flatMap (prog => {
-			val IRd = Try {
-				ir.FromAst(prog)
-			}.toEither
+//		val irResult = compileResult.flatMap (prog => {
+//			val IRd = Try {
+//				ir.FromAst(prog)
+//			}.toEither
+//
+//			IRd match {
+//				case Right(ir) => Right((prog, ir))
+//				case Left(exception) => Left(CompileError(s"Exception in IR generation: ${exception.toString}", 0))
+//			}
+//		})
 
-			IRd match {
-				case Right(ir) => Right((prog, ir))
-				case Left(exception) => Left(CompileError(s"Exception in IR generation: ${exception.toString}", 0))
-			}
-		})
-
-		CompileResult(irResult, totalTime)
+		CompileResult(compileResult, totalTime)
 	}
 
 	// Callbacks for user functionality
@@ -69,6 +70,7 @@ object RockstarWebpilerHooks {
 	}
 
 	def getShortlink(content: String): Future[String] = {
+		// TODO: Fix with anon subclasses
 		val fdDyn = js.Dynamic.newInstance(js.Dynamic.global.FormData)()
 
 		val blobDyn = js.Dynamic.newInstance(js.Dynamic.global.Blob)(Seq(content).toJSArray, js.Dynamic.literal("type" -> "application/x.rockstar"))
@@ -104,8 +106,8 @@ object RockstarWebpilerHooks {
 
 		println("init")
 
-		input.onkeyup = { e: dom.KeyboardEvent => sourceModified(input) }
-		input.onclick = { e: dom.MouseEvent => sourceModified(input) }
+		input.onkeyup = { _: dom.KeyboardEvent => sourceModified(input) }
+		input.onclick = { _: dom.MouseEvent => sourceModified(input) }
 
 		def modelCallback(j: JQueryEventObject, a: Any): Any = {
 			getShortlink(input.value).map(applyShortlink)
@@ -113,8 +115,8 @@ object RockstarWebpilerHooks {
 
 		$("#shortLinkModel").on("shown.bs.modal", modelCallback _)
 
-		ASTButton.onclick = { e: dom.MouseEvent => setActive(CurrentStatus.AST) }
-		IRButton.onclick = { e: dom.MouseEvent => setActive(CurrentStatus.IR) }
+		ASTButton.onclick = { _: dom.MouseEvent => setActive(CurrentStatus.AST) }
+		IRButton.onclick = { _: dom.MouseEvent => setActive(CurrentStatus.IR) }
 
 		sourceModified(input)
 	}
@@ -157,9 +159,8 @@ object RockstarWebpilerHooks {
 			lastError = None
 
 			val time = compile(currentText) match {
-				case CompileResult(Right((program, ir)), compTime) =>
+				case CompileResult(Right(program), compTime) =>
 					lastAst = Some(program)
-					lastIR = Some(ir)
 
 					compTime
 

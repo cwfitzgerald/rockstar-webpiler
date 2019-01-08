@@ -1,6 +1,6 @@
-package rockstar.ir
+package rockstar.parse.ir
 
-import rockstar.ast
+import rockstar.parse.ast
 
 import scala.collection.mutable
 

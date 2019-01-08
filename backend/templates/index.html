@@ -4,19 +4,10 @@
     <meta charset="UTF-8">
     <title>Rockstar Webpiler</title>
 
-    <link rel="stylesheet" href="{{ url_for("static", filename="bootstrap.min.css") }}"
-          integrity="sha384-Smlep5jCw/wG7hdkwQ/Z5nLIefveQRIY9nfy6xoR1uRYBtpZgI6339F5dgvm/e9B">
+    <link rel="stylesheet" href="{{ url_for("static", filename="bootstrap.min.css") }}">
 
     <!-- Include JavaScript dependencies -->
-    {% if debug %}
-        <script type="text/javascript" src="{{ url_for("static_js", jspath="rockstar-jsdeps.js") }}"></script>
-    {% endif %}
-    <!-- Include Scala.js compiled code -->
-    {% if debug %}
-        <script type="text/javascript" src="{{ url_for("static_js", jspath="rockstar-fastopt.js") }}"></script>
-    {% else %}
-        <script type="text/javascript" src="{{ url_for("static_js", jspath="rockstar.js") }}"></script>
-    {% endif %}
+    <script type="text/javascript" src="{{ url_for("static_js", jspath="rs.js") }}"></script>
 </head>
 <body onload="init()">
 

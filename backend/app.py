@@ -56,7 +56,7 @@ def connect_to_database():
     return conn
 
 
-connection = connect_to_database() # type: psycopg2.extensions.connection
+connection = connect_to_database()  # type: psycopg2.extensions.connection
 
 
 @app.after_request
@@ -72,7 +72,7 @@ def minify_request(response):
 
 @app.route('/static/js/<path:jspath>')
 def static_js(jspath):
-    return send_from_directory("../js/target/scala-2.12/", jspath)
+    return send_from_directory("../bundle/static/js", jspath)
 
 
 @app.route('/api/test/rehash_all')
@@ -90,7 +90,6 @@ def rehash_all():
                     wc.execute('UPDATE shortlinks SET fulltext_hash = %s WHERE shortlink = %s', (hash, row[0]))
 
             return "", 204
-
 
 
 @app.route('/api/gen_shortlink', methods=['POST'])

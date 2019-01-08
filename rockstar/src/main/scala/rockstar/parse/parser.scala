@@ -1,8 +1,7 @@
-package rockstar
+package rockstar.parse
 
-import fastparse.all
-import fastparse.all._
-import rockstar.ast.{SourcePosition => srcPos}
+import fastparse._, NoWhitespace._
+import rockstar.parse.ast.{SourcePosition => srcPos}
 
 import scala.annotation.tailrec
 
@@ -11,60 +10,61 @@ object parser {
 	// Core Primitives //
 	/////////////////////
 
-	private val CI = IgnoreCase
+	@inline
+	private def CI[_: P](string: String) = IgnoreCase(string)
 
-	private def I[T](p: P[T]): all.Parser[(Int, T, Int)] = P( Index ~ p ~ Index )
+	private def I[_: P, T](p: => P[T]) = P( Index ~ p ~ Index )
 
-	private val W = P( (CharsWhileIn(Seq(' ', '\t', ','), 1) | commentStatement).rep )/*.log()*/
-	private val MW = P( (CharsWhileIn(Seq(' ', '\t', ','), 1) | commentStatement).rep(1) )/*.log()*/
-	private val nonCommaWhitespace = P( (CharsWhileIn(Seq(' ', '\t'), 1) | commentStatement).rep )
-	private val newLine = P( "\n" | "\r\n" )/*.log()*/.opaque("Newline")
-	private val lineEnd = P( newLine | End )/*.log()*/.opaque("End of Line")
+	private def W[_: P] = P( (CharsWhileIn(" \t,", 1) | commentStatement).rep )/*.log*/
+	private def MW[_: P] = P( (CharsWhileIn(" \t,", 1) | commentStatement).rep(1) )/*.log*/
+	private def nonCommaWhitespace[_: P] = P( (CharsWhileIn(" \t", 1) | commentStatement).rep )
+	private def newLine[_: P] = P( "\n" | "\r\n" )/*.log*/.opaque("Newline")
+	private def lineEnd[_: P] = P( newLine | End )/*.log*/.opaque("End of Line")
 
-	private val capitalLetter = P( CharIn('A' to 'Z') )
-	private val lowerLetter = P( CharIn('a' to 'z') )
-	private val number = P( CharIn('0' to '9') )
+	private def capitalLetter[_: P] = P( CharIn("A-Z") )
+	private def lowerLetter[_: P] = P( CharIn("a-z") )
+	private def number[_: P] = P( CharIn("0-9") )
 
-	private val space = P( CharIn(Seq(' ')) )
-	private val fullLetter = P( capitalLetter | lowerLetter )
-	private val word = P( CharsWhile(c => !c.isWhitespace && (c != '(' && c != '.')) )/*.log()*/.opaque("Word")
+	private def space[_: P] = P( " " )
+	private def fullLetter[_: P] = P( capitalLetter | lowerLetter )
+	private def word[_: P] = P( CharsWhile(c => !c.isWhitespace && (c != '(' && c != '.')) )/*.log*/.opaque("Word")
 
-	private val commonVariableVariableName = P( lowerLetter.rep(1) )/*.log()*/
-	private val commonVariableKeywords = P( StringInIgnoreCase("a", "an", "the", "my", "your") )/*.log()*/
-	private val commonVariable = I( commonVariableKeywords.! ~ MW ~ commonVariableVariableName.! )/*.log()*/
+	private def commonVariableVariableName[_: P] = P( lowerLetter.rep(1) )/*.log*/
+	private def commonVariableKeywords[_: P] = P( StringInIgnoreCase("a", "an", "the", "my", "your") )/*.log*/
+	private def commonVariable[_: P] = I( commonVariableKeywords.! ~ MW ~ commonVariableVariableName.! )/*.log*/
     	.map {case (si, (k, n), ei) => ast.CommonVariable(s"${k}_$n", srcPos(si, ei)) }
 
-	private val properVariableName = I( (capitalLetter ~ fullLetter.rep ~ (space ~ capitalLetter ~ fullLetter.rep).rep).! )/*.log()*/
+	private def properVariableName[_: P] = I( (capitalLetter ~ fullLetter.rep ~ (space ~ capitalLetter ~ fullLetter.rep).rep).! )/*.log*/
     	.map {case (si, n, ei) => ast.ProperVariable(n, srcPos(si, ei)) }
 
-	private val pronoun = P( Index ~ StringInIgnoreCase("it", "he", "she", "him", "her", "they", "them", "ze", "hir", "zie", "zir", "xe", "xem", "ve", "ver").! ~ Index )/*.log()*/
+	private def pronoun[_: P] = I( StringInIgnoreCase("it", "he", "she", "him", "her", "they", "them", "ze", "hir", "zie", "zir", "xe", "xem", "ve", "ver").! )/*.log*/
     	.map {case (si, n, ei) => ast.Pronoun(n, srcPos(si, ei)) }
 
-	private val variable: all.Parser[ast.Variable] = P( commonVariable | properVariableName | pronoun )/*.log()*/
+	private def variable[_: P] = P( commonVariable | properVariableName | pronoun )/*.log*/
     	.opaque("Variable")
 
 	// all the literals in the language
-	private val tMysterious = I( CI("mysterious") )/*.log()*/
+	private def tMysterious[_: P] = I( CI("mysterious") )/*.log*/
 		.map { case (si, _, ei) => ast.MysteriousConstant(srcPos(si, ei)) }
 
-	private val tNull = I( StringInIgnoreCase("null", "nothing", "nowhere", "nobody", "gone", "empty" ) )/*.log()*/
+	private def tNull[_: P] = I( StringInIgnoreCase("null", "nothing", "nowhere", "nobody", "gone", "empty" ) )/*.log*/
     	.map { case (si, _, ei) => ast.NullConstant(srcPos(si, ei)) }
 
-	private val tBooleanTrue = I( StringInIgnoreCase("true", "right", "yes", "ok") )/*.log()*/
+	private def tBooleanTrue[_: P] = I( StringInIgnoreCase("true", "right", "yes", "ok") )/*.log*/
     	.map { case (si, _, ei) => ast.BooleanConstant(value = true, srcPos(si, ei)) }
 
-	private val tBooleanFalse = I( StringInIgnoreCase("false", "wrong", "no", "lines") )/*.log()*/
+	private def tBooleanFalse[_: P] = I( StringInIgnoreCase("false", "wrong", "no", "lines") )/*.log*/
 		.map { case (si, _, ei) => ast.BooleanConstant(value = false, srcPos(si, ei)) }
 
-	private val tNumber = I( ("-".?.! ~ W ~ number.rep(1).!) ~ ("." ~ number.rep).!.? )/*.log()*/
+	private def tNumber[_: P] = I( ("-".?.! ~ W ~ number.rep(1).!) ~ ("." ~ number.rep).!.? )/*.log*/
 		.map { case (si, (sign, front, back), ei) => ast.NumberConstant(BigDecimal(sign + front + back.getOrElse(".0")), srcPos(si, ei)) }
 
-	private val tString = I( "\"" ~/ (!CharIn(Seq('\"', '\n')) ~/ AnyChar).rep.! ~ "\"" )/*.log()*/
+	private def tString[_: P] = I( "\"" ~/ (!CharIn("\"\n") ~/ AnyChar).rep.! ~ "\"" )/*.log*/
     	.opaque("String")
     	.map { case (si, v, ei) => ast.StringConstant(v, srcPos(si, ei)) }
 
-	private val tLiteral: all.Parser[ast.Constant] =
-		P( tMysterious | tNull | tBooleanTrue | tBooleanFalse | tNumber | tString )/*.log()*/
+	private def tLiteral[_: P] =
+		P( tMysterious | tNull | tBooleanTrue | tBooleanFalse | tNumber | tString )/*.log*/
 
 
 	///////////////////////////
@@ -82,14 +82,14 @@ object parser {
 	private case class mulEnumerator() extends mulDivEnumeratorClass
 	private case class divEnumerator() extends mulDivEnumeratorClass
 
-	private val mulDivOperator = P( StringInIgnoreCase("times", "of", "over").! )
+	private def mulDivOperator[_: P] = P( StringInIgnoreCase("times", "of", "over").! )
     	.map {
 		    case "times" => mulEnumerator()
 		    case "of" => mulEnumerator()
 		    case "over" => divEnumerator()
 	    }
 
-	private val plusMinusOperator = P( StringInIgnoreCase("plus", "with", "minus", "without").! )
+	private def plusMinusOperator[_: P] = P( StringInIgnoreCase("plus", "with", "minus", "without").! )
 		.map {
 			case "plus" => plusEnumerator()
 			case "with" => plusEnumerator()
@@ -108,26 +108,26 @@ object parser {
 	private case class eqEnumerator() extends compEqEnumerator
 	private case class neqEnumerator() extends compEqEnumerator
 
-	private val greaterThanOperator = P( StringInIgnoreCase("higher", "greater", "bigger", "stronger") )
+	private def greaterThanOperator[_: P] = P( StringInIgnoreCase("higher", "greater", "bigger", "stronger") )
 		.map {_ => gtEnumerator()}
-	private val lessThanOperator = P( StringInIgnoreCase("lower", "less", "smaller", "weaker") )
+	private def lessThanOperator[_: P] = P( StringInIgnoreCase("lower", "less", "smaller", "weaker") )
 		.map {_ => ltEnumerator()}
-	private val greaterThanEqOperator = P( StringInIgnoreCase("high", "great", "big", "strong") )
+	private def greaterThanEqOperator[_: P] = P( StringInIgnoreCase("high", "great", "big", "strong") )
 		.map {_ => geEnumerator()}
-	private val lessThanEqOperator = P( StringInIgnoreCase("low", "little", "small", "weak") )
+	private def lessThanEqOperator[_: P] = P( StringInIgnoreCase("low", "little", "small", "weak") )
 		.map {_ => leEnumerator()}
-	private val eqOperator = P( StringInIgnoreCase("is") )
+	private def eqOperator[_: P] = P( StringInIgnoreCase("is") )
 		.map {_ => eqEnumerator()}
-	private val neqOperator = P( StringInIgnoreCase("ain't", "aint") )
+	private def neqOperator[_: P] = P( StringInIgnoreCase("ain't", "aint") )
 		.map {_ => neqEnumerator()}
-	private val negationOperator = P( StringInIgnoreCase("not") )
+	private def negationOperator[_: P] = P( StringInIgnoreCase("not") )
 
 	// compound comparison operators
-	private val diffNeqOperator = P( CI("is") ~ W ~ (greaterThanOperator | lessThanOperator) ~ W ~/ CI("than") )
-	private val diffEqOperator = P( CI("is") ~ W ~ CI("as") ~ W ~/ (greaterThanEqOperator | lessThanEqOperator) ~ W ~/ CI("as") )
-	private val diffOperator = P( diffEqOperator | diffNeqOperator )/*.log()*/
+	private def diffNeqOperator[_: P] = P( CI("is") ~ W ~ (greaterThanOperator | lessThanOperator) ~ W ~/ CI("than") )
+	private def diffEqOperator[_: P] = P( CI("is") ~ W ~ CI("as") ~ W ~/ (greaterThanEqOperator | lessThanEqOperator) ~ W ~/ CI("as") )
+	private def diffOperator[_: P] = P( diffEqOperator | diffNeqOperator )/*.log*/
 
-	private val compEqOperator = P( (eqOperator ~ (W ~ negationOperator.! ~ &(MW)).?) | neqOperator )
+	private def compEqOperator[_: P] = P( (eqOperator ~ (W ~ negationOperator.! ~ &(MW)).?) | neqOperator )
     	.map {
 		    case (eqEnumerator(), None) => eqEnumerator()
 		    case (eqEnumerator(), Some(_)) => neqEnumerator()
@@ -139,7 +139,7 @@ object parser {
 	private case class andEnumerator() extends BooleanEnumerator
 	private case class orEnumerator() extends BooleanEnumerator
 	private case class norEnumerator() extends BooleanEnumerator
-	private val booleanOperator = P( StringInIgnoreCase("and", "or", "nor").! )
+	private def booleanOperator[_: P] = P( StringInIgnoreCase("and", "or", "nor").! )
     	.map {
 		    case "and" => andEnumerator()
 		    case "or" => orEnumerator()
@@ -147,18 +147,19 @@ object parser {
 	    }
 
 	// represents anything that can give you a value
-	private val valueProvider: all.Parser[ast.Subexprable] = P( tLiteral | variable )/*.log()*/.opaque("Value provider")
+	private def valueProvider[_: P]: P[ast.Subexprable] = P( tLiteral | variable )/*.log*/.opaque("Value provider")
 
 	/////////////////////////
 	// Order of Operations //
 	/////////////////////////
 
-	private val functionArgumentDelim = P( StringInIgnoreCase(",", "and") )
-	private val functionCall =
+	private def functionArgumentDelim[_: P] = P( StringInIgnoreCase(",", "and") )
+	private def functionCall[_: P] =
 		I(
 			(variable ~ (W ~ CI("taking") ~ W ~/ valueProvider ~ (nonCommaWhitespace ~ functionArgumentDelim ~ W ~/ valueProvider).rep ).? )
-			| tLiteral
-		)/*.log()*/
+			 | tLiteral
+
+		)/*.log*/
     	.map{
 			case (si, v, ei) => v match {
 				case lit: ast.Constant => lit
@@ -170,10 +171,11 @@ object parser {
 			}
 		}
 
-	private val topLevelFunctionCall =
+	private def topLevelFunctionCall[_: P] =
 		I(
 			variable ~ W ~ CI("taking") ~ W ~/ valueProvider ~ (nonCommaWhitespace ~ functionArgumentDelim ~ W ~/ valueProvider).rep
-		)/*.log()*/
+
+		)/*.log*/
 			.map{
 				case (si, v, ei) => v match {
 					case (funcName: ast.Variable, firstArg: ast.Value, nArgs: Object) =>
@@ -192,10 +194,10 @@ object parser {
 			mulDivOperationGen(ast.Division(lhs, node, lhs.srcPos.expand(node.srcPos)), rest)
 	}
 
-	private val mulDivOperation =
+	private def mulDivOperation[_: P] =
 		P( functionCall ~
 			(W ~ mulDivOperator ~ W ~/ functionCall).rep
-		)/*.log()*/
+		)/*.log*/
     	.map {
 			case (lhs, rhs) => mulDivOperationGen(lhs, rhs.toList)
 		}
@@ -209,10 +211,10 @@ object parser {
 			plusMinusOperationGen(ast.Subtraction(lhs, node, lhs.srcPos.expand(node.srcPos)), rest)
 	}
 
-	private val plusMinusOperation =
+	private def plusMinusOperation[_: P] =
 		P( mulDivOperation ~
 			(W ~ plusMinusOperator ~ W ~/ mulDivOperation).rep
-		)/*.log()*/
+		)/*.log*/
 		.map {
 			case (lhs, rhs) => plusMinusOperationGen(lhs, rhs.toList)
 		}
@@ -230,10 +232,10 @@ object parser {
 			diffComparisonOperationGen(ast.LessEq(lhs, node, lhs.srcPos.expand(node.srcPos)), rest)
 	}
 
-	private val diffComparisonOperation =
+	private def diffComparisonOperation[_: P] =
 		P( plusMinusOperation ~
 			(W ~ diffOperator ~ W ~/ plusMinusOperation).rep
-		)/*.log()*/
+		)/*.log*/
     	.map {
 			case (lhs, rhs) => diffComparisonOperationGen(lhs, rhs.toList)
 		}
@@ -247,10 +249,10 @@ object parser {
 			compEqComparisonOperationGen(ast.Neq(lhs, node, lhs.srcPos.expand(node.srcPos)), rest)
 	}
 
-	private val compEqComparisonOperation =
+	private def compEqComparisonOperation[_: P] =
 		P( diffComparisonOperation ~
 			(W ~ compEqOperator ~ W ~/ diffComparisonOperation).rep
-		)/*.log()*/
+		)/*.log*/
     	.map {
 			case (lhs, rhs) => compEqComparisonOperationGen(lhs, rhs.toList)
 		}
@@ -266,49 +268,49 @@ object parser {
 			boolOperationGen(ast.Nor(lhs, node, lhs.srcPos.expand(node.srcPos)), rest)
 	}
 
-	private val booleanOperation =
+	private def booleanOperation[_: P] =
 		P( compEqComparisonOperation ~
 			(W ~ booleanOperator ~ W ~/ compEqComparisonOperation).rep
-		)/*.log()*/
+		)/*.log*/
     	.map {
 			case (lhs, rhs) => boolOperationGen(lhs, rhs.toList)
 		}
 
-	private val mathExpr = P( booleanOperation )/*.log()*/
+	private def mathExpr[_: P] = P( booleanOperation )/*.log*/
     	.opaque("Math Expression")
 
 	///////////////////////////
 	// Standalone statements //
 	///////////////////////////
 
-	private val incrementStatement = I( CI("build") ~ W ~/ variable ~ W ~ CI("up") )/*.log()*/
+	private def incrementStatement[_: P] = I( CI("build") ~ W ~/ variable ~ W ~ CI("up") )/*.log*/
     	.map { case (si, v, ei) => ast.Increment(v, srcPos(si, ei)) }
-	private val decrementStatement = I( CI("knock") ~ W ~/ variable ~ W ~ CI("down") )/*.log()*/
+	private def decrementStatement[_: P] = I( CI("knock") ~ W ~/ variable ~ W ~ CI("down") )/*.log*/
 		.map { case (si, v, ei) => ast.Decrement(v, srcPos(si, ei)) }
 
-	private val breakStatement = I( CI("break") ~/ (W ~ CI("it") ~ W ~/ CI("down")).? ).opaque("Break Statement")
+	private def breakStatement[_: P] = I( CI("break") ~/ (W ~ CI("it") ~ W ~/ CI("down")).? ).opaque("Break Statement")
     	.map { case (si, _, ei) => ast.Break(srcPos(si, ei)) }
-	private val continueStatement = I( CI("continue") | (CI("take") ~ W ~/ CI("it") ~ W ~/ CI("to") ~ W ~/ CI("the") ~ W ~/ CI("top")) ).opaque("Continue Statement")
+	private def continueStatement[_: P] = I( CI("continue") | (CI("take") ~ W ~/ CI("it") ~ W ~/ CI("to") ~ W ~/ CI("the") ~ W ~/ CI("top")) ).opaque("Continue Statement")
 		.map { case (si, _, ei) => ast.Continue(srcPos(si, ei)) }
-	private val putStatement = I( CI("put") ~ W ~/ mathExpr ~ W ~ CI("into") ~ W ~/ variable )/*.log()*/
+	private def putStatement[_: P] = I( CI("put") ~ W ~ mathExpr ~ W ~ CI("into") ~ W ~ variable )/*.log*/
     	.map { case (si, (value, vari), ei) => ast.Set(value, vari, srcPos(si, ei)) }
-	private val listenStatement = I( CI("listen") ~ W ~/ CI("to") ~ W ~/ variable )/*.log()*/
+	private def listenStatement[_: P] = I( CI("listen") ~ W ~/ CI("to") ~ W ~/ variable )/*.log*/
     	.map { case (si, vari, ei) => ast.GetLine(vari, srcPos(si, ei)) }
-	private val sayCommands = P( StringInIgnoreCase("say", "shout", "whisper", "scream") )
-	private val sayStatement = I( sayCommands ~ W ~/ mathExpr )/*.log()*/
+	private def sayCommands[_: P] = P( StringInIgnoreCase("say", "shout", "whisper", "scream") )
+	private def sayStatement[_: P] = I( sayCommands ~ W ~/ mathExpr )/*.log*/
     	.map { case (si, expr, ei) => ast.Print(expr, srcPos(si, ei)) }
-	private val giveBackStatement = I( CI("give") ~ W ~/ CI("back") ~ W ~/ mathExpr )/*.log()*/
+	private def giveBackStatement[_: P] = I( CI("give") ~ W ~/ CI("back") ~ W ~/ mathExpr )/*.log*/
     	.map { case (si, expr, ei) => ast.Return(expr, srcPos(si, ei)) }
 
 	private def resolvePoeticLiteral(string: Seq[String]) = {
 		string.map(word => (word.filter( c => c.isLetter ).length % 10).toString).foldLeft(""){_ + _}
 	}
 
-	private val variableAssignmentOperator = P( StringInIgnoreCase("is", "was", "were", "'s") )/*.log()*/
+	private def variableAssignmentOperator[_: P] = P( StringInIgnoreCase("is", "was", "were", "'s") )/*.log*/
     	.opaque("Variable Assignment Operator")
-	private val variablePoeticTypeLiteral = P( tBooleanTrue | tBooleanFalse | tNull | tMysterious )/*.log()*/
+	private def variablePoeticTypeLiteral[_: P] = P( tBooleanTrue | tBooleanFalse | tNull | tMysterious )/*.log*/
     	.opaque("Poetic Type Literal")
-	private val variablePoeticNumberLiteral = I( (word.! ~ W).rep(1) ~/ ("." ~ (W ~ word.!).rep).? ~ &(lineEnd) )/*.log()*/
+	private def variablePoeticNumberLiteral[_: P] = I( (word.! ~ W).rep(1) ~/ ("." ~ (W ~ word.!).rep).? ~ &(lineEnd) )/*.log*/
     	.opaque("Poetic Number Literal")
     	.map {
 			case (si, (wordLeftSeq, wordRightSeq), ei) =>
@@ -317,52 +319,53 @@ object parser {
 					srcPos(si, ei)
 				)
 		}
-	private val variableTypeAssignment =
+	private def variableTypeAssignment[_: P] =
 		I(
 			variable ~ W ~ variableAssignmentOperator ~ W ~/
 				((tNull | tBooleanFalse | tBooleanTrue) | variablePoeticTypeLiteral | variablePoeticNumberLiteral)
-		) /*.log()*/
+
+		) /*.log*/
 		.map {
 			case (si, (vari, value), ei) => ast.Set(value, vari, srcPos(si, ei))
 		}
-	private val variableStrLiteralAssignment =
+	private def variableStrLiteralAssignment[_: P] =
 		I(
-			variable ~ W ~ CI("says") ~ W ~/ I((!newLine ~ AnyChar).rep.!)
-		) /*.log()*/
+			variable ~ W ~ CI("says") ~ W ~/ I( (!newLine ~ AnyChar).rep.! )
+		) /*.log*/
 		.map {
 			case (si, (vari, (strSI, value, strEI)), ei) =>
 				ast.Set(ast.StringConstant(value, srcPos(strSI, strEI)), vari, srcPos(si, ei))
 		}
 
-	private val variableAssignmentStatement = P( variableTypeAssignment | variableStrLiteralAssignment )/*.log()*/
+	private def variableAssignmentStatement[_: P] = P( variableTypeAssignment | variableStrLiteralAssignment )/*.log*/
 
-	private val ifConditionExpression = P( CI("if") ~ W ~/ mathExpr )/*.log()*/
-	private val elseConditionExpression = P( CI("else") ~/ W ) /*.log()*/
-	private val whileConditionExpression = P( CI("while") ~ W ~/ mathExpr )/*.log()*/
-	private val untilConditionExpression = P( CI("until") ~ W ~/ mathExpr )/*.log()*/
-	private val functionSignatureExpression = P( variable ~ W ~ CI("takes") ~ W ~/ variable ~ (W ~ CI("and")/*.log()*/ ~ W ~ variable).rep )/*.log()*/
+	private def ifConditionExpression[_: P] = P( CI("if") ~ W ~/ mathExpr )/*.log*/
+	private def elseConditionExpression[_: P] = P( CI("else") ~/ W ) /*.log*/
+	private def whileConditionExpression[_: P] = P( CI("while") ~ W ~/ mathExpr )/*.log*/
+	private def untilConditionExpression[_: P] = P( CI("until") ~ W ~/ mathExpr )/*.log*/
+	private def functionSignatureExpression[_: P] = P( variable ~ W ~ CI("takes") ~ W ~/ variable ~ (W ~ CI("and")/*.log*/ ~ W ~ variable).rep )/*.log*/
     	.map {
 			case (funcVar, arg1, argN) => (funcVar, arg1 +: argN)
 		}
 
 
-	private def blockGenerator[T](parser: P[T]): P[(Int, (T, Seq[ast.TopLevel]), Int)] = {
+	private def blockGenerator[_: P, T](parser: => P[T]): P[(Int, (T, Seq[ast.TopLevel]), Int)] = {
 		I(
 			parser ~ W ~ newLine ~
 				(!(W ~ lineEnd) ~/ expression).rep()
 		)
 	}
 
-	private val elseStatement = blockGenerator(elseConditionExpression)
+	private def elseStatement[_: P]= blockGenerator(elseConditionExpression)
 		.map {
 			case (si, (_, statements), ei) =>
 				ast.StatementList(statements.map(_.srcPos).foldLeft(srcPos(ei, ei))(_.expand(_)), statements.toVector)
-		}/*.log()*/
+		}/*.log*/
 
-	private val ifStatement =
+	private def ifStatement[_: P] =
 		I(
 			ifConditionExpression ~ W ~ newLine ~
-				(!(W ~ lineEnd) ~ expression ).rep() ~ (W ~ elseStatement).?
+				(!(W ~ lineEnd) ~/ expression ).rep() ~ (W ~ elseStatement).?
 		)/*.log()*/
     	.map {
 			case (si, (condition, statements, elseBlock), ei) =>
@@ -372,7 +375,7 @@ object parser {
 				ast.IfStatement(condition, statementList, elseBlock.getOrElse(ast.None(srcPos(ei, ei))), srcPos(si, ei))
 		}
 
-	private val whileStatement = blockGenerator(whileConditionExpression)/*.log()*/
+	private def whileStatement[_: P] = blockGenerator(whileConditionExpression)
 		.map {
 			case (si, (condition, statements), ei) =>
 				val statementList =
@@ -380,7 +383,7 @@ object parser {
 					ast.StatementList(statements.map(_.srcPos).foldLeft(srcPos(ei, ei))(_.expand(_)), statements.toVector)
 				ast.WhileStatement(condition, statementList, srcPos(si, ei))
 		}
-	private val untilStatement = blockGenerator(untilConditionExpression)/*.log()*/
+	private def untilStatement[_: P] = blockGenerator(untilConditionExpression)
 		.map {
 			case (si, (condition, statements), ei) =>
 				val statementList =
@@ -388,7 +391,7 @@ object parser {
 					ast.StatementList(statements.map(_.srcPos).foldLeft(srcPos(ei, ei))(_.expand(_)), statements.toVector)
 				ast.UntilStatement(condition, statementList, srcPos(si, ei))
 		}
-	private val functionStatement = blockGenerator(functionSignatureExpression)/*.log()*/
+	private def functionStatement[_: P] = blockGenerator(functionSignatureExpression)
 		.map {
 			case (si, ((funcVar, argVars), statements), ei) =>
 				val statementList =
@@ -397,12 +400,12 @@ object parser {
 				ast.FunctionStatement(funcVar, argVars.toVector, statementList, srcPos(si, ei))
 		}
 
-	private lazy val commentStatement = P( "(" ~ (!")" ~ AnyChar).rep ~ ")" )/*.log()*/
+	private def commentStatement[_: P] = P( "(" ~ (!")" ~ AnyChar).rep ~ ")" )/*.log*/
 
 	// All statements that start with a terminal must come first, as things like
 	// "While Number is as high as Divisor" can start to be parsed as an assignment to
 	// "While Number" causing hell to be raised
-	private lazy val expression: P[ast.TopLevel] = P(
+	private def expression[_: P]: P[ast.TopLevel] = P(
 		W ~ (
 			putStatement |
 				listenStatement |
@@ -420,9 +423,9 @@ object parser {
 				topLevelFunctionCall |
 				I("").map{ case (si, _, ei) => ast.None(srcPos(si, ei))}
 		) ~ W ~ lineEnd
-	)/*.log()*/
+	)/*.log*/
 
-	private lazy val program = I( (!End ~/ expression).rep ~ End ).map {
+	private def program[_: P] = I( (!End ~/ expression).rep ~ End ).map {
 		case (si, statements, ei) =>
 			val statementList =
 			// Create a statement list with a source mapping at of at least the end of the if condition
@@ -430,6 +433,5 @@ object parser {
 			ast.Program(statementList, srcPos(si, ei))
 	}
 
-	def apply() = program
-	def apply(input: String) = program.parse(input)
+	def apply(input: String): Parsed[ast.Program] = parse(input, program(_))
 }

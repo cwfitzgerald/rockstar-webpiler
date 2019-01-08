@@ -1,9 +1,10 @@
-package rockstar.ast
+package rockstar.parse.ast
 
-import rockstar.{ast, util}
+import rockstar.parse.util.lineBreaks
+import rockstar.parse.{ast,util}
 
 object PrettyPrinter {
-	case class positionFormatting(breaks: util.lineBreaks, cn: util.charsNeeded)
+	case class positionFormatting(breaks: lineBreaks, cn: util.charsNeeded)
 
 	private def printAST(curNode: ast.Node, breaks: util.lineBreaks, cn: util.charsNeeded, indent: Int): Seq[String] = {
 		val pos = curNode.srcPos
