@@ -1,12 +1,12 @@
-package rockstar.parse.ast
+package rockstar.internals.ast
 
-import rockstar.parse.util.lineBreaks
-import rockstar.parse.{ast,util}
+import rockstar.util.lineBreaks
+import rockstar.internals.ast
 
 object PrettyPrinter {
-	case class positionFormatting(breaks: lineBreaks, cn: util.charsNeeded)
+	case class positionFormatting(breaks: lineBreaks, cn: rockstar.util.charsNeeded)
 
-	private def printAST(curNode: ast.Node, breaks: util.lineBreaks, cn: util.charsNeeded, indent: Int): Seq[String] = {
+	private def printAST(curNode: ast.Node, breaks: rockstar.util.lineBreaks, cn: rockstar.util.charsNeeded, indent: Int): Seq[String] = {
 		val pos = curNode.srcPos
 
 		implicit val pnl: positionFormatting = positionFormatting(breaks, cn)
@@ -18,8 +18,8 @@ object PrettyPrinter {
 	private def printASTImpl(curNode: ast.Node, indent: Int)(implicit pnl: positionFormatting) : Seq[String] = {
 		val pos = curNode.srcPos
 
-		val posStartString = util.formatAsString(pnl.breaks, pnl.cn, pos.start)
-		val posEndString = util.formatAsString(pnl.breaks, pnl.cn, pos.end)
+		val posStartString = rockstar.util.formatAsString(pnl.breaks, pnl.cn, pos.start)
+		val posEndString = rockstar.util.formatAsString(pnl.breaks, pnl.cn, pos.end)
 
 		def printer(value: String, indent: Int = indent) = {
 			Seq(s"$posStartString-$posEndString${(1 to indent).map(_ => " |").foldLeft("")(_ + _)} $value")
@@ -57,6 +57,7 @@ object PrettyPrinter {
 			case n: ast.And => printer("And") ++ printASTImpl(n.left, indent + 1) ++ printASTImpl(n.right, indent + 1)
 			case n: ast.Or => printer("Or") ++ printASTImpl(n.left, indent + 1) ++ printASTImpl(n.right, indent + 1)
 			case n: ast.Nor => printer("Nor") ++ printASTImpl(n.left, indent + 1) ++ printASTImpl(n.right, indent + 1)
+			case n: ast.Not => printer("Not") ++ printASTImpl(n.value, indent + 1)
 			case n: ast.Increment => printer("Increment") ++ printASTImpl(n.value, indent + 1)
 			case n: ast.Decrement => printer("Decrement") ++ printASTImpl(n.value, indent + 1)
 			case n: ast.Print => printer("Print") ++ printASTImpl(n.value, indent + 1)
@@ -65,18 +66,15 @@ object PrettyPrinter {
 			case n: ast.StatementList => printer("Statement List") ++ n.statements.flatMap(x => printASTImpl(x, indent + 1))
 			case n: ast.IfStatement =>
 				printer("If") ++
-					printer("Conditon", indent + 1) ++
+					printer("Condition", indent + 1) ++
 					printASTImpl(n.condition, indent + 2) ++
 					printASTImpl(n.statements, indent + 1) ++
-					printer("Else") ++
-					printASTImpl(n.elseStatements, indent + 1)
+					printASTImpl(n.elseStatements.fold(identity, identity), indent + 1)
+			case n: ElseStatement =>
+				printer("Else") ++
+					printASTImpl(n.statements, indent + 1)
 			case n: ast.WhileStatement =>
 				printer("While") ++
-					printer("Conditon", indent + 1) ++
-					printASTImpl(n.condition, indent + 2) ++
-					printASTImpl(n.statements, indent + 1)
-			case n: ast.UntilStatement =>
-				printer("Until") ++
 					printer("Conditon", indent + 1) ++
 					printASTImpl(n.condition, indent + 2) ++
 					printASTImpl(n.statements, indent + 1)
@@ -91,7 +89,7 @@ object PrettyPrinter {
 		}
 	}
 
-	def apply(program: Program, breaks: util.lineBreaks, cn: util.charsNeeded, indent: Int = 0): Seq[String] = {
+	def apply(program: Program, breaks: rockstar.util.lineBreaks, cn: rockstar.util.charsNeeded, indent: Int = 0): Seq[String] = {
 		printAST(program, breaks, cn, indent)
 	}
 }

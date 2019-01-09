@@ -1,13 +1,13 @@
-package rockstar.parse.tests
+package rockstar.internals.tests
 
 import fastparse.Parsed.{Failure, Success}
-import rockstar.parse
+import rockstar.generateAST
 import utest._
 
 object ScalaTests extends TestSuite {
 	val tests = Tests {
 		'random - {
-			parse.parser("Val is 3") match {
+			generateAST.parser("Val is 3") match {
 				case Success(value, index) => println(index); assert(true)
 				case Failure(value, index, bt) => println(bt.trace()); println(index); assert(false)
 			}
@@ -42,7 +42,7 @@ object ScalaTests extends TestSuite {
 				   |Say Counter
 				   |    (EOL ending Until block)
 				""".stripMargin
-			parse.parser(input) match {
+			generateAST.parser(input) match {
 				case Success(value, index) => println(input.length); println(index); assert(true)
 				case Failure(value, index, bt) => println(input.length); println(bt.trace()); println(index); assert(false)
 			}
@@ -77,7 +77,7 @@ object ScalaTests extends TestSuite {
 				   |
 				   |Whisper my world
 				""".stripMargin
-			parse.parser(input) match {
+			generateAST.parser(input) match {
 				case Success(value, index) => println(input.length); println(index); assert(true)
 				case Failure(value, index, bt) => println(input.length); println(bt.trace()); println(index); assert(false)
 			}
@@ -185,7 +185,7 @@ object ScalaTests extends TestSuite {
 			  |Rock Remembrance taking Scottie, Life
 			""".stripMargin
 
-			parse.parser(input) match {
+			generateAST.parser(input) match {
 				case Success(value, index) => println(input.length); println(index); assert(true)
 				case Failure(value, index, bt) => println(input.length); println(bt.trace()); println(index); assert(false)
 			}
@@ -198,9 +198,9 @@ object ScalaTests extends TestSuite {
 				  |Build my x up
 				  |Build my x up""".stripMargin
 
-			val parsed = parse.parser(input).get.value
+			val parsed = generateAST.parser(input).get.value
 
-			val FromAst = parse.ir.FromAst(parsed)
+			val FromAst = generateAST.ir.FromAst(parsed)
 		}
 	}
 }

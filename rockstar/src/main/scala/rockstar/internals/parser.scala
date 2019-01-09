@@ -1,7 +1,7 @@
-package rockstar.parse
+package rockstar.internals
 
 import fastparse._, NoWhitespace._
-import rockstar.parse.ast.{SourcePosition => srcPos}
+import rockstar.internals.ast.{SourcePosition => srcPos}
 
 import scala.annotation.tailrec
 
@@ -359,7 +359,8 @@ object parser {
 	private def elseStatement[_: P]= blockGenerator(elseConditionExpression)
 		.map {
 			case (si, (_, statements), ei) =>
-				ast.StatementList(statements.map(_.srcPos).foldLeft(srcPos(ei, ei))(_.expand(_)), statements.toVector)
+				val statementList = ast.StatementList(statements.map(_.srcPos).foldLeft(srcPos(ei, ei))(_.expand(_)), statements.toVector)
+				ast.ElseStatement(statementList, statementList.srcPos)
 		}/*.log*/
 
 	private def ifStatement[_: P] =
@@ -372,7 +373,7 @@ object parser {
 				val statementList =
 					// Create a statement list with a source mapping at of at least the end of the if condition
 					ast.StatementList(statements.map(_.srcPos).foldLeft(srcPos(ei, ei))(_.expand(_)), statements.toVector)
-				ast.IfStatement(condition, statementList, elseBlock.getOrElse(ast.None(srcPos(ei, ei))), srcPos(si, ei))
+				ast.IfStatement(condition, statementList, elseBlock.toRight(ast.None(srcPos(ei, ei))), srcPos(si, ei))
 		}
 
 	private def whileStatement[_: P] = blockGenerator(whileConditionExpression)
@@ -389,7 +390,7 @@ object parser {
 				val statementList =
 					// Create a statement list with a source mapping at of at least the end of the util condition
 					ast.StatementList(statements.map(_.srcPos).foldLeft(srcPos(ei, ei))(_.expand(_)), statements.toVector)
-				ast.UntilStatement(condition, statementList, srcPos(si, ei))
+				ast.WhileStatement(ast.Not(condition, condition.srcPos), statementList, srcPos(si, ei))
 		}
 	private def functionStatement[_: P] = blockGenerator(functionSignatureExpression)
 		.map {
@@ -433,5 +434,5 @@ object parser {
 			ast.Program(statementList, srcPos(si, ei))
 	}
 
-	def apply(input: String): Parsed[ast.Program] = parse(input, program(_))
+	def apply(input: String): Parsed[ast.Program] = parse(input, program(_), verboseFailures = true)
 }

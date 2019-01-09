@@ -1,6 +1,4 @@
-package rockstar.parse
-
-import java.nio.charset.StandardCharsets
+package rockstar
 
 import scala.annotation.tailrec
 

@@ -4,10 +4,8 @@ import org.scalajs.dom
 import org.scalajs.dom.ext.Ajax
 import org.scalajs.dom.html.Div
 import org.scalajs.dom.{html => htmlDom}
-import rockstar.parse
-import rockstar.parse.ast
-import rockstar.parse.util
-import rockstar.parse.ir
+import rockstar.{generateAST, internals}
+import rockstar.internals.{ast, ir, parser}
 import scalatags.JsDom.all._
 
 import scala.concurrent.Future
@@ -33,7 +31,7 @@ object RockstarWebpilerHooks {
 
 		val startTime = java.time.Instant.now()
 		val parsed = Try {
-			parse.parser(input)
+			internals.parser(input)
 		}.toEither
 		val endTime = java.time.Instant.now()
 
@@ -86,7 +84,7 @@ object RockstarWebpilerHooks {
 		})
 	}
 
-	def printAST(program: ast.Program, breaks: util.lineBreaks, needed: util.charsNeeded): Seq[Div] = {
+	def printAST(program: ast.Program, breaks: rockstar.util.lineBreaks, needed: rockstar.util.charsNeeded): Seq[Div] = {
 		val stringSeq = ast.PrettyPrinter(program, breaks, needed)
 
 		stringSeq.map(s => div(s, br()).render)
@@ -123,8 +121,8 @@ object RockstarWebpilerHooks {
 
 	private var currentStatus = CurrentStatus.AST
 	private var lastInput = new String
-	private var lastLineMap: util.lineBreaks = _
-	private var lastCharsNeeded: util.charsNeeded = _
+	private var lastLineMap: rockstar.util.lineBreaks = _
+	private var lastCharsNeeded: rockstar.util.charsNeeded = _
 	private var lastError: Option[String] = None
 	private var lastAst: Option[ast.Program] = None
 	private var lastIR: Option[ir.Program] = None
@@ -148,10 +146,10 @@ object RockstarWebpilerHooks {
 		println("sm")
 		val currentText = element.value
 
-		lastLineMap = util.createLineBreaks(currentText)
-		lastCharsNeeded = util.findCharsNeeded(lastLineMap)
+		lastLineMap = rockstar.util.createLineBreaks(currentText)
+		lastCharsNeeded = rockstar.util.findCharsNeeded(lastLineMap)
 
-		$("#position").text(s"${util.formatAsString(lastLineMap, lastCharsNeeded, element.selectionStart)}")
+		$("#position").text(s"${rockstar.util.formatAsString(lastLineMap, lastCharsNeeded, element.selectionStart)}")
 
 		if (currentText != lastInput) {
 			lastAst = None
@@ -165,7 +163,7 @@ object RockstarWebpilerHooks {
 					compTime
 
 				case CompileResult(Left(CompileError(message, index)), compTime) => {
-					val errorLoc = util.findLinePair(lastLineMap, index)
+					val errorLoc = rockstar.util.findLinePair(lastLineMap, index)
 
 					lastError = Some(s"Error. $message at pos ${errorLoc.line}:${errorLoc.char}")
 					lastAst = None
