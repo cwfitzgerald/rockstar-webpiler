@@ -56,7 +56,6 @@ object PrettyPrinter {
 			case n: ast.Neq => printer("Not Equal") ++ printASTImpl(n.left, indent + 1) ++ printASTImpl(n.right, indent + 1)
 			case n: ast.And => printer("And") ++ printASTImpl(n.left, indent + 1) ++ printASTImpl(n.right, indent + 1)
 			case n: ast.Or => printer("Or") ++ printASTImpl(n.left, indent + 1) ++ printASTImpl(n.right, indent + 1)
-			case n: ast.Nor => printer("Nor") ++ printASTImpl(n.left, indent + 1) ++ printASTImpl(n.right, indent + 1)
 			case n: ast.Not => printer("Not") ++ printASTImpl(n.value, indent + 1)
 			case n: ast.Increment => printer("Increment") ++ printASTImpl(n.value, indent + 1)
 			case n: ast.Decrement => printer("Decrement") ++ printASTImpl(n.value, indent + 1)

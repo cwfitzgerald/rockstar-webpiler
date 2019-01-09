@@ -146,14 +146,6 @@ class FromAst {
 			val rhsVal = ReadVariable(rhsVar, block)
 
 			WriteVariable(GetTempVariable(scope), block, Operations.Or(lhsVal, rhsVal))
-
-		case ast.Nor(lhs, rhs, srcPos) =>
-			val lhsVar = WalkAstSubexpr(block, scope, lhs)
-			val rhsVar = WalkAstSubexpr(block, scope, rhs)
-			val lhsVal = ReadVariable(lhsVar, block)
-			val rhsVal = ReadVariable(rhsVar, block)
-
-			WriteVariable(GetTempVariable(scope), block, Operations.Nor(lhsVal, rhsVal))
 	}
 
 	private def WalkAstImpl(block: BasicBlock, scope: Vector[String], statement: ast.Node): Unit = {

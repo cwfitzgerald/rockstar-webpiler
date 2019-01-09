@@ -70,7 +70,6 @@ package object ast {
 
 	sealed case class And(left: Subexprable, right: Subexprable, srcPos: SourcePosition) extends BinaryOperator
 	sealed case class Or(left: Subexprable, right: Subexprable, srcPos: SourcePosition) extends BinaryOperator
-	sealed case class Nor(left: Subexprable, right: Subexprable, srcPos: SourcePosition) extends BinaryOperator
 
 	sealed trait UnaryOperator extends Node {
 		val value: Node

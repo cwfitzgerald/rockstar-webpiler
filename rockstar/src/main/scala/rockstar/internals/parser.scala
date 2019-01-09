@@ -265,7 +265,8 @@ object parser {
 		case (orEnumerator(), node) :: rest =>
 			boolOperationGen(ast.Or(lhs, node, lhs.srcPos.expand(node.srcPos)), rest)
 		case (norEnumerator(), node) :: rest =>
-			boolOperationGen(ast.Nor(lhs, node, lhs.srcPos.expand(node.srcPos)), rest)
+			val srcLoc = lhs.srcPos.expand(node.srcPos)
+			boolOperationGen(ast.Not(ast.Or(lhs, node, srcLoc), srcLoc), rest)
 	}
 
 	private def booleanOperation[_: P] =
