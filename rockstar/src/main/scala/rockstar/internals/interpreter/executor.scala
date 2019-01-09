@@ -79,7 +79,101 @@ class executor (private var input: String){
 
 	private def compare(ct: CompareType, left: types.RuntimeValue, right: types.RuntimeValue): types.RuntimeBoolean = ???
 
-	private def evaluateSubexpr(value: ast.Subexprable): types.RuntimeValue = ???
+	private def evaluateSubexpr(value: ast.Subexprable): types.RuntimeValue = value match {
+		case ast.And(left, right, _) =>
+			val leftResult = truthyness(evaluateSubexpr(left))
+			if (!leftResult) {
+				types.RuntimeBoolean(true)
+			}
+			else {
+				val rightResult = truthyness(evaluateSubexpr(right))
+				types.RuntimeBoolean(rightResult)
+			}
+		case ast.Or(left, right, _) =>
+			val leftResult = truthyness(evaluateSubexpr(left))
+			if (leftResult) {
+				types.RuntimeBoolean(true)
+			}
+			else {
+				val rightResult = truthyness(evaluateSubexpr(right))
+				types.RuntimeBoolean(rightResult)
+			}
+		case ast.Not(child, _) =>
+			types.RuntimeBoolean(!truthyness(evaluateSubexpr(child)))
+		case ast.Greater(left, right, _) =>
+			compare(CompareType.GT, evaluateSubexpr(left), evaluateSubexpr(right))
+		case ast.Less(left, right, _) =>
+			compare(CompareType.LT, evaluateSubexpr(left), evaluateSubexpr(right))
+		case ast.GreaterEq(left, right, _) =>
+			compare(CompareType.GE, evaluateSubexpr(left), evaluateSubexpr(right))
+		case ast.LessEq(left, right, _) =>
+			compare(CompareType.LE, evaluateSubexpr(left), evaluateSubexpr(right))
+		case ast.Eq(left, right, _) =>
+			compare(CompareType.EQ, evaluateSubexpr(left), evaluateSubexpr(right))
+		case ast.Neq(left, right, _) =>
+			compare(CompareType.NEQ, evaluateSubexpr(left), evaluateSubexpr(right))
+		case ast.Addition(left, right, _) =>
+			val leftValue = evaluateSubexpr(left)
+			val rightValue = evaluateSubexpr(right)
+
+			leftValue match {
+				case types.RuntimeNumber(num) => rightValue match {
+					case types.RuntimeNumber(num2) => types.RuntimeNumber(num + num2)
+					case v => fatalError(s"Cannot add ${v.typename} to a number")
+				}
+				case types.RuntimeString(str) => rightValue match {
+					case types.RuntimeMysterious() => types.RuntimeString(str + "mysterious")
+					case types.RuntimeNull() => types.RuntimeString(str + "null")
+					case types.RuntimeBoolean(b) => types.RuntimeString(str + b.toString)
+					case types.RuntimeNumber(n) => types.RuntimeString(str + n.toString)
+					case types.RuntimeString(str2) => types.RuntimeString(str + str2)
+					case types.RuntimeFunction(f) => types.RuntimeString(str + f.name.name)
+				}
+				case v => fatalError(s"Cannot add to a ${v.typename}.")
+			}
+		case ast.Subtraction(left, right, _) =>
+			val leftValue = evaluateSubexpr(left)
+			val rightValue = evaluateSubexpr(right)
+
+			leftValue match {
+				case types.RuntimeNumber(num) => rightValue match {
+					case types.RuntimeNumber(num2) => types.RuntimeNumber(num + num2)
+					case v => fatalError(s"Cannot subtract ${v.typename} from a number")
+				}
+				case v => fatalError(s"Cannot subtract from a ${v.typename}.")
+			}
+		case ast.Multiplication(left, right, _) =>
+			val leftValue = evaluateSubexpr(left)
+			val rightValue = evaluateSubexpr(right)
+
+			leftValue match {
+				case types.RuntimeNumber(num) => rightValue match {
+					case types.RuntimeNumber(num2) => types.RuntimeNumber(num + num2)
+					case types.RuntimeString(str) => types.RuntimeString(str * num.toInt)
+					case v => fatalError(s"Cannot multiply a ${v.typename} with a number")
+				}
+				case types.RuntimeString(str) => rightValue match {
+					case types.RuntimeNumber(num) => types.RuntimeString(str * num.toInt)
+					case v => fatalError(s"Cannot multiply a ${v.typename} with  a string")
+				}
+				case v => fatalError(s"Cannot multiply a ${v.typename}.")
+			}
+		case ast.Division(left, right, _) =>
+			val leftValue = evaluateSubexpr(left)
+			val rightValue = evaluateSubexpr(right)
+
+			leftValue match {
+				case types.RuntimeNumber(num) => rightValue match {
+					case types.RuntimeNumber(num2) =>
+						if (num2 == 0)
+							types.RuntimeNumber(num + num2)
+						else
+							fatalError("Cannot divide by 0")
+					case v => fatalError(s"Cannot multiply a ${v.typename} with a number")
+				}
+				case v => fatalError(s"Cannot divide a ${v.typename}.")
+			}
+	}
 
 	def increment(variable: ast.Variable, increment: Boolean): Unit = {
 		val value = lookup(variable.name)
