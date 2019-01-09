@@ -62,6 +62,15 @@ class executor (private var input: String){
 		addStackTrace(fullMsg)
 	}
 
+	private def truthyness(value: types.RuntimeValue): Boolean = value match {
+		case types.RuntimeMysterious() => false
+		case types.RuntimeNull() => false
+		case types.RuntimeBoolean(b) => b
+		case types.RuntimeNumber(n) => n == 0
+		case types.RuntimeString(_) => true
+		case types.RuntimeFunction(_) => true
+	}
+
 	private object CompareType extends Enumeration {
 		type CompareType = Value
 		val GT, LT, GE, LE, EQ, NEQ = Value
