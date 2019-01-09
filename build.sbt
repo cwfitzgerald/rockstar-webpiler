@@ -2,11 +2,14 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 val commonSettings = Seq(
 	version := "0.1",
-	scalaVersion := "2.12.6",
+	scalaVersion := "2.12.8",
 	scalacOptions ++= Seq(
 		"-feature",
 		"-deprecation",
-		"-unchecked"
+		"-unchecked",
+		"-opt:l:method",
+		"-opt:l:inline",
+		"-opt-inline-from:**"
 	)
 )
 
