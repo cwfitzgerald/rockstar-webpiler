@@ -75,7 +75,7 @@ class executor (private var input: String){
 		type CompareType = Value
 		val GT, LT, GE, LE, EQ, NEQ = Value
 	}
-	import CompareType._
+	import CompareType.CompareType
 
 	private def compare(ct: CompareType, left: types.RuntimeValue, right: types.RuntimeValue): types.RuntimeBoolean = ???
 
