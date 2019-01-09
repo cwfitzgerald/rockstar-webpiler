@@ -72,13 +72,15 @@ def combineFiles(inFiles: File*)(outfile: File): Unit = {
 frontendJS / Compile / fastOptJS := {
 	val result = (frontendJS / Compile / fastOptJS).value
 	val base = frontendJS.base / "target" / "scala-2.12"
-	combineFiles(base / "frontend-jsdeps.js", base / "frontend-fastopt.js")(baseDirectory.value / "bundle" / "static" / "js" / "rs.js")
+	combineFiles(base / "frontend-jsdeps.js", base / "frontend-fastopt.js")(baseDirectory.value / "bundle" / "static" / "js" / "rs-dep.js")
+	combineFiles(base / "frontend-fastopt.js")(baseDirectory.value / "bundle" / "static" / "js" / "rs.js")
 	result
 }
 
 frontendJS / Compile / fullOptJS := {
 	val result = (frontendJS / Compile / fullOptJS).value
 	val base = frontendJS.base / "target" / "scala-2.12"
-	combineFiles(base / "frontend-jsdeps.js", base / "frontend-opt.js")(baseDirectory.value / "bundle" / "static" / "js" / "rs.js")
+	combineFiles(base / "frontend-jsdeps.js", base / "frontend-opt.js")(baseDirectory.value / "bundle" / "static" / "js" / "rs-dep.js")
+	combineFiles(base / "frontend-opt.js")(baseDirectory.value / "bundle" / "static" / "js" / "rs.js")
 	result
 }
