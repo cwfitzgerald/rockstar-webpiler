@@ -100,9 +100,8 @@ class executor (private var input: String){
 	private def ifStatement(ifBlock: ast.IfStatement): Unit = {
 		if (compare(CompareType.EQ, evaluateSubexpr(ifBlock.condition), types.RuntimeBoolean(true)).value)
 			statements(ifBlock)
-		else ifBlock.elseStatements foreach {
-			e: ast.ElseStatement => statements(e)
-		}
+		else
+			statements(ifBlock.elseStatement)
 	}
 
 	private def whileStatement(whileBlock: ast.WhileStatement): Unit = {

@@ -32,7 +32,7 @@ object parser {
 	private def commonVariableVariableName[_: P] = P( lowerLetter.rep(1) )/*.log*/
 	private def commonVariableKeywords[_: P] = P( StringInIgnoreCase("a", "an", "the", "my", "your") )/*.log*/
 	private def commonVariable[_: P] = I( commonVariableKeywords.! ~ MW ~ commonVariableVariableName.! )/*.log*/
-    	.map {case (si, (k, n), ei) => ast.CommonVariable(s"${k}_$n", srcPos(si, ei)) }
+    	.map {case (si, (k, n), ei) => ast.CommonVariable(s"${k}$$$n", srcPos(si, ei)) }
 
 	private def properVariableName[_: P] = I( (capitalLetter ~ fullLetter.rep ~ (space ~ capitalLetter ~ fullLetter.rep).rep).! )/*.log*/
     	.map {case (si, n, ei) => ast.ProperVariable(n, srcPos(si, ei)) }
@@ -363,17 +363,20 @@ object parser {
 				ast.ElseStatement(statementList, statementList.srcPos)
 		}/*.log*/
 
+	private def emptyElse(srcPos: ast.SourcePosition) =
+		ast.ElseStatement(ast.StatementList(srcPos, Vector[ast.TopLevel]()), srcPos)
+
 	private def ifStatement[_: P] =
 		I(
 			ifConditionExpression ~ W ~ newLine ~
-				(!(W ~ lineEnd) ~/ expression ).rep() ~ (W ~ elseStatement).?
-		)/*.log()*/
+				(!(W ~ lineEnd) ~/ expression ).rep() ~ (lineEnd ~ W ~ elseStatement).?
+		)/*.log*/
     	.map {
 			case (si, (condition, statements, elseBlock), ei) =>
 				val statementList =
 					// Create a statement list with a source mapping at of at least the end of the if condition
 					ast.StatementList(statements.map(_.srcPos).foldLeft(srcPos(ei, ei))(_.expand(_)), statements.toVector)
-				ast.IfStatement(condition, statementList, elseBlock.toRight(ast.None(srcPos(ei, ei))), srcPos(si, ei))
+				ast.IfStatement(condition, statementList, elseBlock.getOrElse(emptyElse(srcPos(si, ei))), srcPos(si, ei))
 		}
 
 	private def whileStatement[_: P] = blockGenerator(whileConditionExpression)

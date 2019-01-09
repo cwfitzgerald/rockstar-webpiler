@@ -69,7 +69,7 @@ object PrettyPrinter {
 					printer("Condition", indent + 1) ++
 					printASTImpl(n.condition, indent + 2) ++
 					printASTImpl(n.statements, indent + 1) ++
-					printASTImpl(n.elseStatements.fold(identity, identity), indent + 1)
+					printASTImpl(n.elseStatement, indent + 1)
 			case n: ElseStatement =>
 				printer("Else") ++
 					printASTImpl(n.statements, indent + 1)

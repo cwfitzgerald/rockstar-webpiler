@@ -101,7 +101,7 @@ package object ast {
 
 	sealed case class IfStatement(condition: Subexprable,
 	                              statements: StatementList,
-	                              elseStatements: Either[None, ElseStatement],
+	                              elseStatement: ElseStatement,
 	                              srcPos: SourcePosition) extends Block with TopLevel
 	sealed case class ElseStatement(statements: StatementList, srcPos: SourcePosition) extends Block
 	sealed case class WhileStatement(condition: Subexprable, statements: StatementList, srcPos: SourcePosition) extends Block with TopLevel
