@@ -81,6 +81,28 @@ class executor (private var input: String){
 
 	private def evaluateSubexpr(value: ast.Subexprable): types.RuntimeValue = ???
 
+	def increment(variable: ast.Variable, increment: Boolean): Unit = {
+		val value = lookup(variable.name)
+		assignment(variable.name, value match {
+			case types.RuntimeMysterious() =>
+				warning("Cannot increment a mysterious value")
+				value
+			case types.RuntimeNull() =>
+				warning("Cannot increment a null value")
+				value
+			case types.RuntimeBoolean(b) =>
+				types.RuntimeBoolean(!b)
+			case types.RuntimeNumber(n) =>
+				types.RuntimeNumber(if (increment){ n + 1 } else { n - 1 })
+			case types.RuntimeString(s) =>
+				warning("Cannot increment a string")
+				value
+			case types.RuntimeFunction(_) =>
+				warning("Cannot increment a function")
+				value
+		})
+	}
+
 	private def print(rv: types.RuntimeValue): Unit = outputBuilder.append(stringify(rv))
 
 	private def function(name: String, args: Vector[types.RuntimeValue]): types.RuntimeValue = {
@@ -136,10 +158,10 @@ class executor (private var input: String){
 				assignment(variable.name, getLine)
 			case ast.Set(value, variable, _) =>
 				assignment(variable.name, evaluateSubexpr(value))
-			case ast.Increment(variable, srcPos) =>
-				assignment(variable.name, evaluateSubexpr(ast.Addition(variable, variable, srcPos)))
-			case ast.Decrement(variable, srcPos) =>
-				assignment(variable.name, evaluateSubexpr(ast.Subtraction(variable, variable, srcPos)))
+			case ast.Increment(variable, _) =>
+				increment(variable, increment = true)
+			case ast.Decrement(variable, _) =>
+				increment(variable, increment = false)
 			case ast.Continue(_) => block match {
 				case _: ast.IfStatement =>
 				case _: ast.FunctionStatement =>
